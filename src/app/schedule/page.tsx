@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useBooking } from "@/context/BookingContext";
 import StepCard from "@/components/StepCard";
 import Stepper from "@/components/Stepper";
 import { Duration, TimeSlot } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { Clock, Calendar, Sunset, Moon } from "lucide-react";
+import { Clock, Calendar, Sunset, Moon, Ban } from "lucide-react";
 import { format, addDays } from "date-fns";
 
 const durations: { value: Duration; label: string }[] = [
@@ -33,14 +33,31 @@ function generateDates(): { value: string; label: string }[] {
     return dates;
 }
 
+interface BookedSlot {
+    date: string;
+    time: string;
+}
+
 export default function SchedulePage() {
     const router = useRouter();
     const { formData, updateFormData, setCurrentStep } = useBooking();
     const [selectedDuration, setSelectedDuration] = useState<Duration | null>(formData.duration);
     const [selectedDate, setSelectedDate] = useState<string>(formData.consultationDate || "");
     const [selectedTime, setSelectedTime] = useState<TimeSlot | null>(formData.consultationTime);
+    const [bookedSlots, setBookedSlots] = useState<BookedSlot[]>([]);
 
     const dates = generateDates();
+
+    useEffect(() => {
+        fetch("/api/booked-slots")
+            .then((res) => res.json())
+            .then((data) => setBookedSlots(data.bookedSlots || []))
+            .catch(() => setBookedSlots([]));
+    }, []);
+
+    const isSlotBooked = (date: string, time: string) => {
+        return bookedSlots.some((slot) => slot.date === date && slot.time === time);
+    };
 
     const canProceed = selectedDuration && selectedDate && selectedTime;
 
@@ -53,6 +70,14 @@ export default function SchedulePage() {
         });
         setCurrentStep(5);
         router.push("/details");
+    };
+
+    // Clear selected time if it becomes booked when date changes
+    const handleDateChange = (date: string) => {
+        setSelectedDate(date);
+        if (selectedTime && isSlotBooked(date, selectedTime)) {
+            setSelectedTime(null);
+        }
     };
 
     return (
@@ -97,7 +122,7 @@ export default function SchedulePage() {
                         </label>
                         <select
                             value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
+                            onChange={(e) => handleDateChange(e.target.value)}
                             className="w-full p-3 rounded-xl bg-cream-50 border-2 border-cream-400/60 text-gray-800 focus:border-gold-500 focus:outline-none transition-colors duration-300 appearance-none cursor-pointer"
                         >
                             <option value="">Select a date...</option>
@@ -116,23 +141,43 @@ export default function SchedulePage() {
                             Time Slot
                         </label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {timeSlots.map((slot) => (
-                                <button
-                                    key={slot.value}
-                                    onClick={() => setSelectedTime(slot.value)}
-                                    className={cn(
-                                        "flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all duration-300",
-                                        "hover:border-gold-500 hover:shadow-lg hover:shadow-gold-500/10",
-                                        "active:scale-[0.98]",
-                                        selectedTime === slot.value
-                                            ? "border-gold-500 bg-gold-50"
-                                            : "border-cream-400/60 bg-cream-50"
-                                    )}
-                                >
-                                    <span className="text-gold-600">{slot.icon}</span>
-                                    <span className="text-gray-800 font-medium">{slot.label}</span>
-                                </button>
-                            ))}
+                            {timeSlots.map((slot) => {
+                                const booked = selectedDate ? isSlotBooked(selectedDate, slot.value) : false;
+                                return (
+                                    <button
+                                        key={slot.value}
+                                        onClick={() => !booked && setSelectedTime(slot.value)}
+                                        disabled={booked}
+                                        className={cn(
+                                            "relative flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all duration-300",
+                                            booked
+                                                ? "border-gray-200 bg-gray-100 cursor-not-allowed opacity-60"
+                                                : [
+                                                    "hover:border-gold-500 hover:shadow-lg hover:shadow-gold-500/10",
+                                                    "active:scale-[0.98]",
+                                                    selectedTime === slot.value
+                                                        ? "border-gold-500 bg-gold-50"
+                                                        : "border-cream-400/60 bg-cream-50",
+                                                ]
+                                        )}
+                                    >
+                                        {booked ? (
+                                            <>
+                                                <Ban className="w-4 h-4 text-gray-400" />
+                                                <span className="text-gray-400 font-medium line-through">{slot.label}</span>
+                                                <span className="absolute -top-2 -right-2 bg-red-100 text-red-600 text-xs font-semibold px-2 py-0.5 rounded-full border border-red-200">
+                                                    Booked
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="text-gold-600">{slot.icon}</span>
+                                                <span className="text-gray-800 font-medium">{slot.label}</span>
+                                            </>
+                                        )}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 

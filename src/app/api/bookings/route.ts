@@ -43,6 +43,22 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Check if the timeslot is already booked
+        const existingBooking = await prisma.booking.findFirst({
+            where: {
+                consultationDate,
+                consultationTime,
+                paymentStatus: "Paid",
+            },
+        });
+
+        if (existingBooking) {
+            return NextResponse.json(
+                { error: "This timeslot is already booked. Please choose a different date or time." },
+                { status: 409 }
+            );
+        }
+
         // Create booking in database
         const booking = await prisma.booking.create({
             data: {
