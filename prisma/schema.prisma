@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Booking {
+  id               String   @id @default(uuid())
+  consultationType String
+  btrOption        String
+  duration         Int
+  consultationDate String
+  consultationTime String
+  name             String
+  dob              String
+  tob              String
+  gender           String
+  email            String
+  phone            String
+  birthPlace       String
+  concern          String
+  amount           Int
+  paymentStatus    String   @default("Pending")
+  razorpayOrderId  String?
+  razorpayPaymentId String?
+  createdAt        DateTime @default(now())
+}

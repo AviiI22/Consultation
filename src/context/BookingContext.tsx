@@ -1,0 +1,60 @@
+"use client";
+
+import React, { createContext, useContext, useState, ReactNode } from "react";
+import { BookingFormData } from "@/lib/types";
+
+const initialState: BookingFormData = {
+    consultationType: null,
+    btrOption: null,
+    duration: null,
+    consultationDate: null,
+    consultationTime: null,
+    name: "",
+    dob: "",
+    tob: "",
+    gender: null,
+    email: "",
+    phone: "",
+    birthPlace: "",
+    concern: "",
+};
+
+interface BookingContextType {
+    formData: BookingFormData;
+    updateFormData: (data: Partial<BookingFormData>) => void;
+    resetFormData: () => void;
+    currentStep: number;
+    setCurrentStep: (step: number) => void;
+}
+
+const BookingContext = createContext<BookingContextType | undefined>(undefined);
+
+export function BookingProvider({ children }: { children: ReactNode }) {
+    const [formData, setFormData] = useState<BookingFormData>(initialState);
+    const [currentStep, setCurrentStep] = useState(1);
+
+    const updateFormData = (data: Partial<BookingFormData>) => {
+        setFormData((prev) => ({ ...prev, ...data }));
+    };
+
+    const resetFormData = () => {
+        setFormData(initialState);
+        setCurrentStep(1);
+    };
+
+    return (
+        <BookingContext.Provider
+            value={{ formData, updateFormData, resetFormData, currentStep, setCurrentStep }}
+        >
+            {children}
+        </BookingContext.Provider>
+    );
+}
+
+export function useBooking() {
+    const context = useContext(BookingContext);
+    if (!context) {
+        throw new Error("useBooking must be used within a BookingProvider");
+    }
+    return context;
+}

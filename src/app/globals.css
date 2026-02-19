@@ -1,0 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --gold: #C9A227;
+  --gold-light: #FFD966;
+  --bg: #FAFAF7;
+  --card: #FFFFFF;
+  --surface: #F5F3EE;
+  --border: #E8E4DB;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg);
+  color: #2D2A26;
+  font-family: 'Inter', system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(201, 162, 39, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 162, 39, 0.5);
+}
+
+/* Form inputs */
+input,
+select,
+textarea {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Background decoration */
+.bg-stars {
+  background-image:
+    radial-gradient(2px 2px at 20px 30px, rgba(201, 162, 39, 0.08), transparent),
+    radial-gradient(2px 2px at 40px 70px, rgba(201, 162, 39, 0.05), transparent),
+    radial-gradient(1px 1px at 90px 40px, rgba(201, 162, 39, 0.08), transparent),
+    radial-gradient(1px 1px at 130px 80px, rgba(201, 162, 39, 0.05), transparent),
+    radial-gradient(2px 2px at 160px 30px, rgba(201, 162, 39, 0.06), transparent);
+  background-size: 200px 100px;
+}
+
+/* Gold gradient text */
+.text-gold-gradient {
+  background: linear-gradient(135deg, #A07B1A 0%, #C9A227 50%, #A07B1A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Selection option styling */
+option {
+  background-color: #FFFFFF;
+  color: #2D2A26;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
