@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
             promoCode,
             discountPercent,
             userTimezone,
+            currency,
         } = body;
 
         // Validate required fields
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest) {
                 paymentStatus: "Pending",
                 status: "Upcoming",
                 userTimezone: userTimezone || "UTC",
+                currency: currency || "INR",
             },
         });
 
@@ -123,7 +125,7 @@ export async function POST(request: NextRequest) {
         try {
             const order = await razorpay.orders.create({
                 amount: finalAmount * 100, // Razorpay expects paise
-                currency: "INR",
+                currency: booking.currency,
                 receipt: booking.id,
             });
             razorpayOrderId = order.id;

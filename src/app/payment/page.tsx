@@ -165,12 +165,12 @@ export default function PaymentPage() {
                             </div>
 
                             {bookingInfo && (
-                                <div className="rounded-xl bg-white dark:bg-slate-900 border border-cream-400/60 dark:border-slate-800 p-5">
-                                    <p className="text-gray-500 dark:text-slate-500 text-sm mb-1">Amount to Pay</p>
-                                    <p className="text-3xl font-serif font-bold text-gray-800 dark:text-gray-100">
+                                <div className="rounded-xl bg-white border border-cream-400/60 p-5">
+                                    <p className="text-gray-500 text-sm mb-1">Amount to Pay</p>
+                                    <p className="text-3xl font-serif font-bold text-gray-800">
                                         {formatPrice(bookingInfo.amount, currency as any)}
                                     </p>
-                                    <p className="text-gray-400 dark:text-slate-600 text-xs mt-2">
+                                    <p className="text-gray-400 text-xs mt-2">
                                         Booking ID: {bookingInfo.bookingId.slice(0, 8)}...
                                     </p>
                                 </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { z } from "zod";
 import { useBooking } from "@/context/BookingContext";
 import StepCard from "@/components/StepCard";
 import Stepper from "@/components/Stepper";
@@ -79,20 +80,39 @@ export default function DetailsPage() {
     };
 
     const validate = (): boolean => {
-        const errs: Record<string, string> = {};
-        if (!name.trim()) errs.name = "Name is required";
-        if (!dob) errs.dob = "Date of birth is required";
-        if (!tobHour || !tobMinute || !tobPeriod) errs.tob = "Time of birth is required";
-        if (!gender) errs.gender = "Gender is required";
-        if (!email.trim()) errs.email = "Email is required";
-        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = "Enter a valid email";
-        if (!phone.trim()) errs.phone = "Phone number is required";
-        else if (!/^[6-9]\d{9}$/.test(phone.replace(/\s/g, "")))
-            errs.phone = "Enter a valid 10-digit Indian phone number";
-        if (!birthPlace.trim()) errs.birthPlace = "Place of birth is required";
-        if (!concern.trim()) errs.concern = "Please describe your concern";
-        setErrors(errs);
-        return Object.keys(errs).length === 0;
+        const schema = z.object({
+            name: z.string().min(1, "Name is required"),
+            dob: z.string().min(1, "Date of birth is required"),
+            tob: z.string().min(1, "Time of birth is required"),
+            gender: z.string().min(1, "Gender is required"),
+            email: z.string().email("Enter a valid email"),
+            phone: z.string().regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian phone number"),
+            birthPlace: z.string().min(1, "Place of birth is required"),
+            concern: z.string().min(10, "Please describe your concern (min 10 characters)"),
+        });
+
+        const tobStr = tobHour && tobMinute && tobPeriod ? `${tobHour}:${tobMinute} ${tobPeriod}` : "";
+        const result = schema.safeParse({
+            name: name.trim(),
+            dob,
+            tob: tobStr,
+            gender,
+            email: email.trim(),
+            phone: phone.trim().replace(/\s/g, ""),
+            birthPlace: birthPlace.trim(),
+            concern: concern.trim(),
+        });
+
+        if (!result.success) {
+            const errs: Record<string, string> = {};
+            result.error.errors.forEach((err) => {
+                if (err.path[0]) errs[err.path[0] as string] = err.message;
+            });
+            setErrors(errs);
+            return false;
+        }
+        setErrors({});
+        return true;
     };
 
     const handleContinue = () => {

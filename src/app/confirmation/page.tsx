@@ -15,6 +15,7 @@ export default function ConfirmationPage() {
     const [confirmationInfo, setConfirmationInfo] = useState<{
         bookingId: string;
         amount: number;
+        currency: string;
     } | null>(null);
 
     useEffect(() => {
@@ -40,6 +41,7 @@ export default function ConfirmationPage() {
             date: formData.consultationDate || "—",
             time: formData.consultationTime || "—",
             amount: confirmationInfo.amount,
+            currency: confirmationInfo.currency || 'INR',
         });
     };
 
@@ -104,7 +106,7 @@ export default function ConfirmationPage() {
                             <div className="flex items-center justify-between pt-3 border-t border-cream-300/60">
                                 <span className="text-gray-500 text-sm">Amount Paid</span>
                                 <span className="text-green-600 font-semibold">
-                                    ₹{confirmationInfo.amount.toLocaleString("en-IN")}
+                                    {confirmationInfo.currency || 'INR'} {confirmationInfo.amount.toLocaleString("en-IN")}
                                 </span>
                             </div>
                         )}

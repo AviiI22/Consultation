@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
-// Admin — get all testimonials (including unapproved)
 export async function GET() {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     try {
         const testimonials = await prisma.testimonial.findMany({
             orderBy: { createdAt: "desc" },
@@ -16,6 +22,11 @@ export async function GET() {
 
 // Admin — approve/reject
 export async function PATCH(request: NextRequest) {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     try {
         const { id, isApproved } = await request.json();
         const testimonial = await prisma.testimonial.update({
@@ -31,6 +42,11 @@ export async function PATCH(request: NextRequest) {
 
 // Admin — delete
 export async function DELETE(request: NextRequest) {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     try {
         const { id } = await request.json();
         await prisma.testimonial.delete({ where: { id } });

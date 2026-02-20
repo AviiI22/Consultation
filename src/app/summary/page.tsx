@@ -36,9 +36,24 @@ export default function SummaryPage() {
     const [promoError, setPromoError] = useState("");
     const [promoApplied, setPromoApplied] = useState(!!formData.promoCode);
 
-    const baseAmount = formData.duration === 60
-        ? PRICING[currency].NORMAL * 2
-        : PRICING[currency].NORMAL;
+    const getBaseAmount = () => {
+        let amount = PRICING[currency].NORMAL;
+        if (formData.consultationType === "urgent") {
+            amount = PRICING[currency].URGENT;
+        }
+
+        if (formData.duration === 60) {
+            amount = amount * 2;
+        }
+
+        if (formData.btrOption === "with-btr") {
+            amount += PRICING[currency].BTR;
+        }
+
+        return amount;
+    };
+
+    const baseAmount = getBaseAmount();
     const discountPercent = formData.discountPercent || 0;
     const discountAmount = Math.round((baseAmount * discountPercent) / 100);
     const finalAmount = Math.max(baseAmount - discountAmount, 1);
@@ -96,6 +111,7 @@ export default function SummaryPage() {
                 body: JSON.stringify({
                     ...formData,
                     amount: baseAmount,
+                    currency,
                 }),
             });
             const data = await res.json();
@@ -251,23 +267,23 @@ export default function SummaryPage() {
                     </div>
 
                     {/* Price */}
-                    <div className="rounded-xl bg-white dark:bg-slate-900 border border-cream-400/60 dark:border-slate-800 p-5">
+                    <div className="rounded-xl bg-white border border-cream-400/60 p-5">
                         <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2">
-                                <CreditCard className="w-5 h-5 text-gray-500 dark:text-slate-400" />
-                                <span className="text-gray-600 dark:text-slate-400 font-medium">Subtotal</span>
+                                <CreditCard className="w-5 h-5 text-gray-500" />
+                                <span className="text-gray-600 font-medium">Subtotal</span>
                             </div>
-                            <span className="text-gray-600 dark:text-slate-400">{formatPrice(baseAmount, currency)}</span>
+                            <span className="text-gray-600">{formatPrice(baseAmount, currency)}</span>
                         </div>
                         {discountAmount > 0 && (
-                            <div className="flex items-center justify-between mb-1 text-green-600 dark:text-green-400 text-sm">
+                            <div className="flex items-center justify-between mb-1 text-green-600 text-sm">
                                 <span>Discount ({discountPercent}%)</span>
                                 <span>-{formatPrice(discountAmount, currency)}</span>
                             </div>
                         )}
-                        <div className="border-t border-cream-300/60 dark:border-slate-700 pt-2 mt-2 flex items-center justify-between">
-                            <span className="text-gray-800 dark:text-gray-100 font-semibold">Total</span>
-                            <span className="text-2xl font-serif font-bold text-gray-800 dark:text-gray-100">
+                        <div className="border-t border-cream-300/60 pt-2 mt-2 flex items-center justify-between">
+                            <span className="text-gray-800 font-semibold">Total</span>
+                            <span className="text-2xl font-serif font-bold text-gray-800">
                                 {formatPrice(finalAmount, currency)}
                             </span>
                         </div>

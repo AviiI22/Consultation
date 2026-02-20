@@ -9,6 +9,7 @@ interface ReceiptData {
     date: string;
     time: string;
     amount: number;
+    currency: string;
     transactionId?: string;
 }
 
@@ -83,7 +84,7 @@ export const generateReceiptPDF = (data: ReceiptData) => {
     doc.setFontSize(14);
     doc.setTextColor(gold[0], gold[1], gold[2]);
     doc.text("Amount Paid:", leftCol, y);
-    doc.text(`INR ${data.amount.toLocaleString("en-IN")}.00`, valueCol, y);
+    doc.text(`${data.currency} ${data.amount.toLocaleString("en-IN")}.00`, valueCol, y);
 
     // Footer
     y = 260;

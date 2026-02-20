@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
                 birthPlace: booking.birthPlace,
                 concern: booking.concern,
                 amount: booking.amount,
+                currency: (booking as any).currency || "INR",
             },
             booking.phone
         ).then((result) => {
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
             }
         });
 
-        // Send email confirmation (non-blocking)
+        // Prepare data for email/notifications
         const emailBookingData = {
             bookingId: booking.id,
             name: booking.name,
@@ -86,9 +87,47 @@ export async function POST(request: NextRequest) {
             birthPlace: booking.birthPlace,
             concern: booking.concern,
             amount: booking.amount,
+            currency: (booking as any).currency || "INR",
             meetingLink: (booking as any).meetingLink,
-            userTimezone: (booking as any).userTimezone,
+            userTimezone: (booking as any).userTimezone || "UTC",
         };
+
+        // 3. Create Google Calendar Event (non-blocking but we'll try to get the link for email if possible)
+        // Note: For better UX, we could make this blocking if we want the email to definitely have the link,
+        // but let's keep it non-blocking and just re-send or handle gracefully.
+
+        // Fix date parsing: consultationDate is "yyyy-MM-dd", consultationTime is "10:00 AM - 11:00 AM" (example)
+        const timePart = booking.consultationTime.split(" - ")[0]; // "10:00 AM"
+        const fullDateStr = `${booking.consultationDate} ${timePart}`; // "2026-02-25 10:00 AM"
+        const dateObj = parse(fullDateStr, "yyyy-MM-dd h:mm a", new Date());
+
+        if (isValid(dateObj)) {
+            try {
+                const event = await createConsultationEvent({
+                    summary: `Astrology Consultation: ${booking.name}`,
+                    description: `Consultation Type: ${booking.consultationType}\nBTR Option: ${booking.btrOption}\nDuration: ${booking.duration} mins\nConcern: ${booking.concern}`,
+                    startTime: dateObj,
+                    durationMinutes: booking.duration,
+                    attendeeEmail: booking.email,
+                    timezone: (booking as any).userTimezone || "UTC",
+                });
+
+                if (event && event.hangoutLink) {
+                    console.log(`Calendar event created: ${event.hangoutLink}`);
+                    // Save the meeting link to the booking
+                    await prisma.booking.update({
+                        where: { id: booking.id },
+                        data: { meetingLink: event.hangoutLink },
+                    });
+                    // Attach to our data object for email/whatsapp if we want
+                    (emailBookingData as any).meetingLink = event.hangoutLink;
+                }
+            } catch (err) {
+                console.error("Failed to create calendar event:", err);
+            }
+        }
+
+        // Now send email confirmation (it might have the meeting link now)
         sendEmailConfirmation(emailBookingData).then((result) => {
             if (result.success) {
                 console.log(`Email sent for booking ${booking.id}`);
@@ -96,33 +135,6 @@ export async function POST(request: NextRequest) {
                 console.warn(`Email failed for booking ${booking.id}:`, result.error);
             }
         });
-
-        // 3. Create Google Calendar Event (non-blocking)
-        const [day, month, year] = booking.consultationDate.split("/").map(Number);
-        const timeStr = booking.consultationTime.split(" - ")[0]; // Take start time
-        const dateObj = parse(`${booking.consultationDate} ${timeStr}`, "dd/MM/yyyy h:mm a", new Date());
-
-        if (isValid(dateObj)) {
-            createConsultationEvent({
-                summary: `Astrology Consultation: ${booking.name}`,
-                description: `Consultation Type: ${booking.consultationType}\nBTR Option: ${booking.btrOption}\nDuration: ${booking.duration} mins\nConcern: ${booking.concern}`,
-                startTime: dateObj,
-                durationMinutes: booking.duration,
-                attendeeEmail: booking.email,
-                timezone: (booking as any).userTimezone,
-            }).then(async (event) => {
-                if (event && event.hangoutLink) {
-                    console.log(`Calendar event created: ${event.hangoutLink}`);
-                    // Save the meeting link to the booking
-                    await prisma.booking.update({
-                        where: { id: (booking as any).id },
-                        data: { meetingLink: event.hangoutLink },
-                    });
-                }
-            }).catch(err => {
-                console.error("Failed to create calendar event:", err);
-            });
-        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

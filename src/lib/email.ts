@@ -18,6 +18,7 @@ interface BookingDetails {
   birthPlace: string;
   concern: string;
   amount: number;
+  currency: string;
   meetingLink?: string | null;
   userTimezone?: string;
 }
@@ -82,7 +83,7 @@ function buildEmailHtml(booking: BookingDetails): string {
         <!-- Amount -->
         <div style="background: #fff; border: 1px solid #E8E4DB; border-radius: 8px; padding: 16px; margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
           <span style="color: #888; font-size: 14px;">Amount Paid</span>
-          <span style="color: #2D2A26; font-size: 24px; font-weight: 700;">₹${booking.amount}</span>
+          <span style="color: #2D2A26; font-size: 24px; font-weight: 700;">${booking.currency || 'INR'} ${booking.amount}</span>
         </div>
 
         <!-- Footer note -->

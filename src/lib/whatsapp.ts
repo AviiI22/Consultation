@@ -22,6 +22,7 @@ interface BookingDetails {
     birthPlace: string;
     concern: string;
     amount: number;
+    currency: string;
 }
 
 function formatMessage(booking: BookingDetails): string {
@@ -51,7 +52,7 @@ function formatMessage(booking: BookingDetails): string {
         ``,
         `📝 *Concern:* ${booking.concern}`,
         ``,
-        `💰 *Amount Paid:* ₹${booking.amount}`,
+        `💰 *Amount Paid:* ${booking.currency} ${booking.amount}`,
         ``,
         `Thank you for your booking! Our astrologer will connect with you at the scheduled time. 🙏`,
     ].join("\n");

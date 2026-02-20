@@ -19,13 +19,9 @@ export const metadata: Metadata = {
         title: "Astrology Consultation",
         description: "Expert Vedic astrology insights for your life journey.",
     },
-    themeColor: [
-        { media: '(prefers-color-scheme: light)', color: '#FDFCF8' },
-        { media: '(prefers-color-scheme: dark)', color: '#020617' },
-    ],
+    themeColor: '#FDFCF8',
 };
 
-import { ThemeProvider } from "next-themes";
 
 export default function RootLayout({
     children,
@@ -33,13 +29,11 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en" suppressHydrationWarning>
-            <body className="min-h-screen bg-cream-100 dark:bg-slate-950 antialiased">
-                <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-                    <BookingProvider>
-                        {children}
-                    </BookingProvider>
-                </ThemeProvider>
+        <html lang="en">
+            <body className="min-h-screen bg-cream-100 antialiased">
+                <BookingProvider>
+                    {children}
+                </BookingProvider>
             </body>
         </html>
     );

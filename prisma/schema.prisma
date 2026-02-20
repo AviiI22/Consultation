@@ -31,6 +31,7 @@ model Booking {
   adminNotes        String?
   userTimezone      String   @default("UTC")
   adminTimezone     String   @default("Asia/Kolkata")
+  currency          String   @default("INR")
   promoCode         String?
   discountAmount    Int      @default(0)
   createdAt         DateTime @default(now())
