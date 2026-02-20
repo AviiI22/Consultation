@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
             amount,
             promoCode,
             discountPercent,
+            userTimezone,
         } = body;
 
         // Validate required fields
@@ -113,6 +114,7 @@ export async function POST(request: NextRequest) {
                 promoCode: promoCode || null,
                 paymentStatus: "Pending",
                 status: "Upcoming",
+                userTimezone: userTimezone || "UTC",
             },
         });
 

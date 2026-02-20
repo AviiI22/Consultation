@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -29,6 +29,8 @@ model Booking {
   razorpayPaymentId String?
   meetingLink       String?
   adminNotes        String?
+  userTimezone      String   @default("UTC")
+  adminTimezone     String   @default("Asia/Kolkata")
   promoCode         String?
   discountAmount    Int      @default(0)
   createdAt         DateTime @default(now())
@@ -56,6 +58,27 @@ model PromoCode {
   isActive        Boolean  @default(true)
   expiresAt       String?
   createdAt       DateTime @default(now())
+}
+
+model ServicePackage {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  sessionCount Int
+  price       Int
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  userPackages UserPackage[]
+}
+
+model UserPackage {
+  id               String   @id @default(uuid())
+  userEmail        String
+  packageId        String
+  package          ServicePackage @relation(fields: [packageId], references: [id])
+  remainingSessions Int
+  paymentStatus    String   @default("Pending")
+  createdAt        DateTime @default(now())
 }
 
 model Testimonial {

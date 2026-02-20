@@ -20,6 +20,7 @@ export interface BookingFormData {
     concern: string;
     promoCode: string | null;
     discountPercent: number;
+    userTimezone?: string;
 }
 
 export interface BookingResponse {

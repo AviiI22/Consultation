@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 import { sendWhatsAppConfirmation } from "@/lib/whatsapp";
 import { sendEmailConfirmation } from "@/lib/email";
+import { createConsultationEvent } from "@/lib/google-calendar";
+import { parse, isValid } from "date-fns";
 
 export async function POST(request: NextRequest) {
     try {
@@ -84,6 +86,8 @@ export async function POST(request: NextRequest) {
             birthPlace: booking.birthPlace,
             concern: booking.concern,
             amount: booking.amount,
+            meetingLink: (booking as any).meetingLink,
+            userTimezone: (booking as any).userTimezone,
         };
         sendEmailConfirmation(emailBookingData).then((result) => {
             if (result.success) {
@@ -92,6 +96,33 @@ export async function POST(request: NextRequest) {
                 console.warn(`Email failed for booking ${booking.id}:`, result.error);
             }
         });
+
+        // 3. Create Google Calendar Event (non-blocking)
+        const [day, month, year] = booking.consultationDate.split("/").map(Number);
+        const timeStr = booking.consultationTime.split(" - ")[0]; // Take start time
+        const dateObj = parse(`${booking.consultationDate} ${timeStr}`, "dd/MM/yyyy h:mm a", new Date());
+
+        if (isValid(dateObj)) {
+            createConsultationEvent({
+                summary: `Astrology Consultation: ${booking.name}`,
+                description: `Consultation Type: ${booking.consultationType}\nBTR Option: ${booking.btrOption}\nDuration: ${booking.duration} mins\nConcern: ${booking.concern}`,
+                startTime: dateObj,
+                durationMinutes: booking.duration,
+                attendeeEmail: booking.email,
+                timezone: (booking as any).userTimezone,
+            }).then(async (event) => {
+                if (event && event.hangoutLink) {
+                    console.log(`Calendar event created: ${event.hangoutLink}`);
+                    // Save the meeting link to the booking
+                    await prisma.booking.update({
+                        where: { id: (booking as any).id },
+                        data: { meetingLink: event.hangoutLink },
+                    });
+                }
+            }).catch(err => {
+                console.error("Failed to create calendar event:", err);
+            });
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

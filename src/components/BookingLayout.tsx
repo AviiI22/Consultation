@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ThemeToggle } from "./ThemeToggle";
 
 export default function BookingLayout({
     children,
@@ -6,20 +7,23 @@ export default function BookingLayout({
     children: React.ReactNode;
 }) {
     return (
-        <div className="min-h-screen bg-cream-100 bg-stars">
+        <div className="min-h-screen bg-cream-100 dark:bg-slate-950 bg-stars transition-colors duration-300">
             {/* Ambient glow effects */}
             <div className="fixed inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute -top-40 -right-40 w-96 h-96 bg-gold-200/30 rounded-full blur-3xl" />
-                <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gold-100/20 rounded-full blur-3xl" />
+                <div className="absolute -top-40 -right-40 w-96 h-96 bg-gold-200/30 dark:bg-gold-900/10 rounded-full blur-3xl" />
+                <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gold-100/20 dark:bg-slate-900/20 rounded-full blur-3xl" />
             </div>
 
             <main className="relative z-10 min-h-screen flex flex-col">
                 {/* Header */}
-                <header className="py-6 px-4 text-center">
+                <header className="py-6 px-4 flex flex-col items-center relative">
+                    <div className="absolute top-6 right-6">
+                        <ThemeToggle />
+                    </div>
                     <Link href="/" className="font-serif text-2xl sm:text-3xl text-gold-gradient tracking-wide">
                         ✦ Astrology Consultation ✦
                     </Link>
-                    <p className="text-cream-700 text-xs mt-1 tracking-widest uppercase">
+                    <p className="text-cream-700 dark:text-slate-500 text-xs mt-1 tracking-widest uppercase">
                         Discover Your Cosmic Path
                     </p>
                 </header>
@@ -30,7 +34,7 @@ export default function BookingLayout({
                 </div>
 
                 {/* Footer */}
-                <footer className="py-4 text-center text-cream-700 text-xs border-t border-cream-400/50">
+                <footer className="py-4 text-center text-cream-700 dark:text-slate-500 text-xs border-t border-cream-400/50 dark:border-slate-800">
                     <p>© 2026 Astrology Consultation. All rights reserved.</p>
                 </footer>
             </main>

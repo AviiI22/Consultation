@@ -27,6 +27,8 @@ interface BookingContextType {
     resetFormData: () => void;
     currentStep: number;
     setCurrentStep: (step: number) => void;
+    currency: "INR" | "USD";
+    setCurrency: (c: "INR" | "USD") => void;
 }
 
 const BookingContext = createContext<BookingContextType | undefined>(undefined);
@@ -34,19 +36,27 @@ const BookingContext = createContext<BookingContextType | undefined>(undefined);
 export function BookingProvider({ children }: { children: ReactNode }) {
     const [formData, setFormData] = useState<BookingFormData>(initialState);
     const [currentStep, setCurrentStep] = useState(1);
+    const [currency, setCurrency] = useState<"INR" | "USD">("INR");
+
+    // Auto-detect timezone
+    React.useEffect(() => {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        setFormData((prev) => ({ ...prev, userTimezone: tz }));
+    }, []);
 
     const updateFormData = (data: Partial<BookingFormData>) => {
         setFormData((prev) => ({ ...prev, ...data }));
     };
 
     const resetFormData = () => {
-        setFormData(initialState);
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        setFormData({ ...initialState, userTimezone: tz });
         setCurrentStep(1);
     };
 
     return (
         <BookingContext.Provider
-            value={{ formData, updateFormData, resetFormData, currentStep, setCurrentStep }}
+            value={{ formData, updateFormData, resetFormData, currentStep, setCurrentStep, currency, setCurrency }}
         >
             {children}
         </BookingContext.Provider>
