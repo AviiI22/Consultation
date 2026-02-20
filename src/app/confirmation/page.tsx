@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useBooking } from "@/context/BookingContext";
 import StepCard from "@/components/StepCard";
-import { CheckCircle, Calendar, Clock, Sparkles } from "lucide-react";
+import Stepper from "@/components/Stepper";
+import BookingLayout from "@/components/BookingLayout";
+import { CheckCircle, Calendar, Clock, Sparkles, Download } from "lucide-react";
+import { generateReceiptPDF } from "@/lib/generate-receipt";
 
 export default function ConfirmationPage() {
     const router = useRouter();
@@ -27,8 +30,22 @@ export default function ConfirmationPage() {
         router.push("/");
     };
 
+    const downloadReceipt = () => {
+        if (!confirmationInfo) return;
+        generateReceiptPDF({
+            bookingId: confirmationInfo.bookingId,
+            name: formData.name,
+            email: formData.email,
+            consultationType: formData.consultationType === "urgent" ? "Urgent Consultation" : "Normal Consultation",
+            date: formData.consultationDate || "—",
+            time: formData.consultationTime || "—",
+            amount: confirmationInfo.amount,
+        });
+    };
+
     return (
-        <div className="pt-8">
+        <BookingLayout>
+            <Stepper currentStep={7} />
             <StepCard title="Booking Confirmed!" subtitle="Your consultation has been successfully booked">
                 <div className="space-y-8 text-center">
                     {/* Success animation */}
@@ -104,14 +121,23 @@ export default function ConfirmationPage() {
                         with you at the scheduled time.
                     </p>
 
-                    <button
-                        onClick={handleNewBooking}
-                        className="w-full py-3 rounded-xl border-2 border-gold-300 text-gold-700 hover:bg-gold-50 font-medium transition-all duration-300"
-                    >
-                        Book Another Consultation
-                    </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button
+                            onClick={downloadReceipt}
+                            className="w-full py-3 rounded-xl bg-gold-500 hover:bg-gold-400 text-white font-medium transition-all duration-300 flex items-center justify-center gap-2"
+                        >
+                            <Download className="w-4 h-4" />
+                            Download Receipt
+                        </button>
+                        <button
+                            onClick={handleNewBooking}
+                            className="w-full py-3 rounded-xl border-2 border-gold-300 text-gold-700 hover:bg-gold-50 font-medium transition-all duration-300"
+                        >
+                            Book Another
+                        </button>
+                    </div>
                 </div>
             </StepCard>
-        </div>
+        </BookingLayout>
     );
 }

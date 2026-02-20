@@ -1,85 +1,359 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useBooking } from "@/context/BookingContext";
-import StepCard from "@/components/StepCard";
-import Stepper from "@/components/Stepper";
-import { Shield, Lock, FileCheck } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import {
+    Sparkles,
+    Clock,
+    Shield,
+    Star,
+    ChevronDown,
+    ChevronUp,
+    ArrowRight,
+    Zap,
+    Heart,
+    Eye,
+} from "lucide-react";
 
-export default function TermsPage() {
-    const router = useRouter();
-    const { setCurrentStep } = useBooking();
+interface Testimonial {
+    id: string;
+    name: string;
+    rating: number;
+    text: string;
+}
 
-    const handleAgree = () => {
-        setCurrentStep(2);
-        router.push("/consultation-type");
-    };
+const FAQs = [
+    {
+        q: "What information do I need for the consultation?",
+        a: "You'll need your date of birth, time of birth, place of birth, and a description of your concern. Accurate birth time is essential for precise astrological analysis.",
+    },
+    {
+        q: "What is Birth Time Rectification (BTR)?",
+        a: "BTR is a process to determine your exact birth time using life events and astrological techniques. It's especially helpful if you're unsure about your exact birth time.",
+    },
+    {
+        q: "How long does a consultation take?",
+        a: "We offer 30-minute and 60-minute sessions. Choose based on the depth of analysis you need — longer sessions allow for more detailed exploration.",
+    },
+    {
+        q: "Is my personal data secure?",
+        a: "Absolutely. Your birth details and personal information are encrypted and stored securely. We never share your data with third parties.",
+    },
+    {
+        q: "What payment methods are accepted?",
+        a: "We accept all major payment methods through Razorpay — credit/debit cards, UPI, net banking, and popular wallets.",
+    },
+    {
+        q: "Can I reschedule or cancel my booking?",
+        a: "Please contact us as early as possible if you need to reschedule. Cancellations are handled on a case-by-case basis.",
+    },
+];
+
+export default function LandingPage() {
+    const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+    const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+    useEffect(() => {
+        fetch("/api/testimonials")
+            .then((r) => r.json())
+            .then((d) => setTestimonials(d.testimonials || []))
+            .catch(() => { });
+    }, []);
 
     return (
-        <>
-            <Stepper currentStep={1} />
-            <StepCard
-                title="Terms & Conditions"
-                subtitle="Please review and accept before proceeding"
-            >
-                <div className="space-y-6">
-                    <div className="rounded-xl bg-cream-200/60 border border-cream-400/50 p-6 space-y-4 text-sm text-gray-600 leading-relaxed max-h-80 overflow-y-auto">
-                        <div className="flex items-start gap-3">
-                            <Shield className="w-5 h-5 text-gold-600 mt-0.5 flex-shrink-0" />
-                            <p>
-                                Welcome to our Astrology Consultation platform. By proceeding, you
-                                acknowledge and agree to the following terms regarding the use of
-                                your personal data.
-                            </p>
-                        </div>
+        <div className="min-h-screen bg-cream-100">
+            {/* Header */}
+            <header className="sticky top-0 z-30 bg-cream-100/80 backdrop-blur-xl border-b border-cream-300/50">
+                <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+                    <Link href="/" className="font-serif text-lg sm:text-xl text-gold-gradient tracking-wide">
+                        ✦ Astrology Consultation
+                    </Link>
+                    <div className="flex items-center gap-3">
+                        <Link
+                            href="/testimonials"
+                            className="text-xs text-cream-700 hover:text-gold-600 transition-colors hidden sm:block"
+                        >
+                            Reviews
+                        </Link>
+                        <Link
+                            href="/book"
+                            className="px-5 py-2 rounded-xl bg-gold-500 hover:bg-gold-400 text-white text-sm font-semibold transition-all hover:shadow-lg hover:shadow-gold-500/20"
+                        >
+                            Book Now
+                        </Link>
+                    </div>
+                </div>
+            </header>
 
-                        <div className="flex items-start gap-3">
-                            <Lock className="w-5 h-5 text-gold-600 mt-0.5 flex-shrink-0" />
-                            <div>
-                                <p className="font-semibold text-gold-700 mb-1">Data Security</p>
-                                <p>
-                                    Your birth details, contact information, and consultation data
-                                    will be stored securely and encrypted. We use industry-standard
-                                    security measures to protect your personal information.
-                                </p>
+            {/* Hero */}
+            <section className="relative overflow-hidden py-20 sm:py-32">
+                <div className="absolute inset-0 bg-gradient-to-br from-cream-200 via-cream-100 to-gold-50/30" />
+                <div className="absolute top-10 left-10 w-72 h-72 bg-gold-200/20 rounded-full blur-3xl animate-pulse" />
+                <div className="absolute bottom-10 right-10 w-96 h-96 bg-gold-300/10 rounded-full blur-3xl animate-pulse delay-1000" />
+                <div className="relative max-w-4xl mx-auto px-4 text-center">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold-100 border border-gold-200 text-gold-700 text-xs font-medium mb-6 animate-bounce">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Vedic Astrology • Personalized Readings
+                    </div>
+                    <h1 className="text-4xl sm:text-6xl font-serif font-bold text-gray-900 leading-tight mb-6">
+                        Discover Your{" "}
+                        <span className="text-gold-gradient">Cosmic Path</span>
+                    </h1>
+                    <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto mb-10 leading-relaxed">
+                        Get personalized insights from expert Vedic astrology consultations.
+                        Understand your birth chart, navigate life transitions, and find clarity in the stars.
+                    </p>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <Link
+                            href="/book"
+                            className="group px-8 py-4 rounded-2xl bg-gold-500 hover:bg-gold-400 text-white font-semibold text-lg transition-all duration-300 hover:shadow-xl hover:shadow-gold-500/30 active:scale-[0.98] flex items-center gap-2"
+                        >
+                            Start Your Journey
+                            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                        <a
+                            href="#services"
+                            className="px-8 py-4 rounded-2xl border-2 border-cream-400 text-gray-600 font-semibold text-lg hover:border-gold-500 hover:text-gold-600 transition-all duration-300"
+                        >
+                            Learn More
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            {/* Services */}
+            <section id="services" className="py-20 bg-white/50">
+                <div className="max-w-6xl mx-auto px-4">
+                    <div className="text-center mb-12">
+                        <h2 className="text-3xl sm:text-4xl font-serif font-bold text-gray-900 mb-3">
+                            Our <span className="text-gold-gradient">Services</span>
+                        </h2>
+                        <p className="text-gray-500 max-w-xl mx-auto">
+                            Choose the consultation that best fits your needs
+                        </p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {[
+                            {
+                                icon: Eye,
+                                title: "Normal Consultation",
+                                desc: "Comprehensive birth chart analysis with detailed predictions and guidance for your life's journey.",
+                                color: "text-gold-600",
+                                bg: "bg-gold-50",
+                                border: "border-gold-200",
+                            },
+                            {
+                                icon: Zap,
+                                title: "Urgent Consultation",
+                                desc: "Priority scheduling for time-sensitive queries. Get quick insights when you need them most.",
+                                color: "text-red-600",
+                                bg: "bg-red-50",
+                                border: "border-red-200",
+                            },
+                            {
+                                icon: Clock,
+                                title: "Birth Time Rectification",
+                                desc: "Determine your exact birth time through advanced astrological methods for more accurate readings.",
+                                color: "text-blue-600",
+                                bg: "bg-blue-50",
+                                border: "border-blue-200",
+                            },
+                        ].map((service) => (
+                            <div
+                                key={service.title}
+                                className={`group rounded-2xl border ${service.border} ${service.bg} p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1`}
+                            >
+                                <div className={`w-12 h-12 rounded-xl ${service.bg} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                                    <service.icon className={`w-6 h-6 ${service.color}`} />
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-800 mb-2">{service.title}</h3>
+                                <p className="text-sm text-gray-600 leading-relaxed">{service.desc}</p>
                             </div>
-                        </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
 
-                        <div className="flex items-start gap-3">
-                            <FileCheck className="w-5 h-5 text-gold-600 mt-0.5 flex-shrink-0" />
-                            <div>
-                                <p className="font-semibold text-gold-700 mb-1">Purpose of Data Collection</p>
-                                <p>
-                                    The information you provide will be used solely for the purpose
-                                    of conducting your astrology consultation. This includes your
-                                    birth details (date, time, and place of birth), which are
-                                    essential for accurate astrological analysis.
-                                </p>
+            {/* Why Choose Us */}
+            <section className="py-20">
+                <div className="max-w-6xl mx-auto px-4">
+                    <div className="text-center mb-12">
+                        <h2 className="text-3xl sm:text-4xl font-serif font-bold text-gray-900 mb-3">
+                            Why Choose <span className="text-gold-gradient">Us</span>
+                        </h2>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                        {[
+                            { icon: Star, label: "Expert Analysis", desc: "Years of Vedic astrology expertise" },
+                            { icon: Shield, label: "Data Privacy", desc: "Your information is always secure" },
+                            { icon: Clock, label: "Flexible Schedule", desc: "Book at your convenience" },
+                            { icon: Heart, label: "Personalized", desc: "Readings tailored to your chart" },
+                        ].map((item) => (
+                            <div
+                                key={item.label}
+                                className="text-center p-6 rounded-2xl bg-white border border-cream-300/50 hover:border-gold-300 hover:shadow-lg transition-all duration-300"
+                            >
+                                <item.icon className="w-8 h-8 text-gold-500 mx-auto mb-3" />
+                                <h3 className="font-semibold text-gray-800 mb-1">{item.label}</h3>
+                                <p className="text-xs text-gray-500">{item.desc}</p>
                             </div>
-                        </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
 
-                        <div className="border-t border-cream-400/50 pt-4">
-                            <p className="text-gray-500 text-xs">
-                                By clicking &quot;OK, I AGREE&quot; below, you consent to the collection
-                                and processing of your personal data as described above. You may
-                                request deletion of your data at any time by contacting our support
-                                team.
-                            </p>
+            {/* Pricing */}
+            <section className="py-20 bg-white/50">
+                <div className="max-w-4xl mx-auto px-4">
+                    <div className="text-center mb-12">
+                        <h2 className="text-3xl sm:text-4xl font-serif font-bold text-gray-900 mb-3">
+                            Simple <span className="text-gold-gradient">Pricing</span>
+                        </h2>
+                        <p className="text-gray-500">Transparent pricing with no hidden fees</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="rounded-2xl bg-white border border-cream-400/50 p-8 text-center hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                            <Clock className="w-8 h-8 text-gold-500 mx-auto mb-3" />
+                            <h3 className="text-xl font-serif font-bold text-gray-800 mb-1">30 Minutes</h3>
+                            <p className="text-3xl font-bold text-gold-600 my-4">₹10</p>
+                            <p className="text-sm text-gray-500 mb-6">Quick focused consultation</p>
+                            <Link
+                                href="/book"
+                                className="inline-block px-6 py-3 rounded-xl bg-cream-100 text-gold-700 font-medium text-sm border border-cream-400/50 hover:bg-gold-500 hover:text-white hover:border-gold-500 transition-all duration-300"
+                            >
+                                Book Now
+                            </Link>
+                        </div>
+                        <div className="rounded-2xl bg-gradient-to-b from-gold-50 to-white border-2 border-gold-300 p-8 text-center relative hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gold-500 text-white text-xs font-medium">
+                                Popular
+                            </div>
+                            <Clock className="w-8 h-8 text-gold-500 mx-auto mb-3" />
+                            <h3 className="text-xl font-serif font-bold text-gray-800 mb-1">60 Minutes</h3>
+                            <p className="text-3xl font-bold text-gold-600 my-4">₹10</p>
+                            <p className="text-sm text-gray-500 mb-6">In-depth detailed reading</p>
+                            <Link
+                                href="/book"
+                                className="inline-block px-6 py-3 rounded-xl bg-gold-500 text-white font-medium text-sm hover:bg-gold-400 transition-all duration-300 hover:shadow-lg hover:shadow-gold-500/20"
+                            >
+                                Book Now
+                            </Link>
                         </div>
                     </div>
+                </div>
+            </section>
 
-                    <button
-                        onClick={handleAgree}
-                        className="w-full py-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-lg transition-all duration-300 hover:shadow-lg hover:shadow-red-600/20 active:scale-[0.98]"
-                    >
-                        OK, I AGREE
-                    </button>
+            {/* Testimonials */}
+            {testimonials.length > 0 && (
+                <section className="py-20">
+                    <div className="max-w-6xl mx-auto px-4">
+                        <div className="text-center mb-12">
+                            <h2 className="text-3xl sm:text-4xl font-serif font-bold text-gray-900 mb-3">
+                                What Clients <span className="text-gold-gradient">Say</span>
+                            </h2>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                            {testimonials.slice(0, 6).map((t) => (
+                                <div
+                                    key={t.id}
+                                    className="rounded-2xl bg-white border border-cream-300/50 p-5 hover:shadow-lg transition-all duration-300"
+                                >
+                                    <div className="flex gap-0.5 mb-3">
+                                        {Array.from({ length: 5 }, (_, i) => (
+                                            <Star
+                                                key={i}
+                                                className={`w-4 h-4 ${i < t.rating ? "text-gold-500 fill-gold-500" : "text-gray-200"}`}
+                                            />
+                                        ))}
+                                    </div>
+                                    <p className="text-sm text-gray-600 leading-relaxed mb-3">&ldquo;{t.text}&rdquo;</p>
+                                    <p className="text-xs font-medium text-gray-800">— {t.name}</p>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="text-center mt-8">
+                            <Link
+                                href="/testimonials"
+                                className="text-sm text-gold-600 hover:text-gold-500 underline underline-offset-4"
+                            >
+                                View all reviews →
+                            </Link>
+                        </div>
+                    </div>
+                </section>
+            )}
 
-                    <p className="text-center text-gray-400 text-xs">
-                        You must accept the terms to proceed with booking
+            {/* FAQ */}
+            <section className="py-20 bg-white/50">
+                <div className="max-w-3xl mx-auto px-4">
+                    <div className="text-center mb-12">
+                        <h2 className="text-3xl sm:text-4xl font-serif font-bold text-gray-900 mb-3">
+                            Frequently Asked <span className="text-gold-gradient">Questions</span>
+                        </h2>
+                    </div>
+                    <div className="space-y-3">
+                        {FAQs.map((faq, i) => (
+                            <div
+                                key={i}
+                                className="rounded-xl border border-cream-300/50 bg-white overflow-hidden transition-all duration-200"
+                            >
+                                <button
+                                    onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                                    className="w-full flex items-center justify-between px-5 py-4 text-left text-sm font-medium text-gray-800 hover:bg-cream-50 transition-colors"
+                                >
+                                    {faq.q}
+                                    {openFaq === i ? (
+                                        <ChevronUp className="w-4 h-4 text-gold-500 flex-shrink-0" />
+                                    ) : (
+                                        <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                    )}
+                                </button>
+                                {openFaq === i && (
+                                    <div className="px-5 pb-4 text-sm text-gray-600 leading-relaxed">
+                                        {faq.a}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* CTA */}
+            <section className="py-20">
+                <div className="max-w-4xl mx-auto px-4 text-center">
+                    <div className="rounded-3xl bg-gradient-to-br from-gray-900 to-gray-800 p-12 sm:p-16 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(201,162,39,0.15),transparent_50%)]" />
+                        <div className="relative">
+                            <h2 className="text-3xl sm:text-4xl font-serif font-bold text-white mb-4">
+                                Ready to Explore Your Stars?
+                            </h2>
+                            <p className="text-gray-400 mb-8 max-w-lg mx-auto">
+                                Book your personalized Vedic astrology consultation today and uncover the insights written in your birth chart.
+                            </p>
+                            <Link
+                                href="/book"
+                                className="group inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-gold-500 hover:bg-gold-400 text-white font-semibold text-lg transition-all duration-300 hover:shadow-xl hover:shadow-gold-500/30"
+                            >
+                                Book Your Consultation
+                                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Footer */}
+            <footer className="py-8 border-t border-cream-300/50">
+                <div className="max-w-6xl mx-auto px-4 text-center">
+                    <p className="text-xs text-cream-500">
+                        ✦ Astrology Consultation · Discover Your Cosmic Path ·{" "}
+                        <Link href="/admin/login" className="hover:text-gold-500 transition-colors">
+                            Admin
+                        </Link>
                     </p>
                 </div>
-            </StepCard>
-        </>
+            </footer>
+        </div>
     );
 }

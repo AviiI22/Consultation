@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import StepCard from "@/components/StepCard";
 import Stepper from "@/components/Stepper";
+import BookingLayout from "@/components/BookingLayout";
 import { Loader2, CreditCard } from "lucide-react";
 
 declare global {
@@ -129,7 +130,7 @@ export default function PaymentPage() {
     };
 
     return (
-        <>
+        <BookingLayout>
             <Stepper currentStep={7} />
             <StepCard
                 title="Complete Payment"
@@ -186,6 +187,6 @@ export default function PaymentPage() {
                     )}
                 </div>
             </StepCard>
-        </>
+        </BookingLayout>
     );
 }

@@ -1,7 +1,7 @@
 export type ConsultationType = "normal" | "urgent";
 export type BtrOption = "without-btr" | "with-btr";
 export type Duration = 30 | 60;
-export type TimeSlot = "7:00 PM - 8:00 PM" | "10:00 PM - 11:00 PM";
+export type TimeSlot = string;
 export type Gender = "Male" | "Female" | "Other";
 
 export interface BookingFormData {
@@ -18,6 +18,8 @@ export interface BookingFormData {
     phone: string;
     birthPlace: string;
     concern: string;
+    promoCode: string | null;
+    discountPercent: number;
 }
 
 export interface BookingResponse {
@@ -32,7 +34,7 @@ export const PRICING: Record<Duration, number> = {
 };
 
 export const STEPS = [
-    { number: 1, label: "Terms", path: "/" },
+    { number: 1, label: "Terms", path: "/book" },
     { number: 2, label: "Type", path: "/consultation-type" },
     { number: 3, label: "BTR", path: "/btr-option" },
     { number: 4, label: "Schedule", path: "/schedule" },

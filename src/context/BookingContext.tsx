@@ -17,6 +17,8 @@ const initialState: BookingFormData = {
     phone: "",
     birthPlace: "",
     concern: "",
+    promoCode: null,
+    discountPercent: 0,
 };
 
 interface BookingContextType {

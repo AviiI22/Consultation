@@ -1,6 +1,7 @@
 "use client";
 
 import { SessionProvider } from "next-auth/react";
+import AdminNav from "@/components/AdminNav";
 
 export default function AdminLayout({
     children,
@@ -9,8 +10,9 @@ export default function AdminLayout({
 }>) {
     return (
         <SessionProvider>
-            <div className="min-h-screen">
-                {children}
+            <div className="min-h-screen bg-cream-100">
+                <AdminNav />
+                <div className="py-6">{children}</div>
             </div>
         </SessionProvider>
     );

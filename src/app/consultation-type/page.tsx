@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useBooking } from "@/context/BookingContext";
 import StepCard from "@/components/StepCard";
 import Stepper from "@/components/Stepper";
+import BookingLayout from "@/components/BookingLayout";
 import { ConsultationType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Clock, Zap } from "lucide-react";
@@ -34,7 +35,7 @@ export default function ConsultationTypePage() {
     };
 
     return (
-        <>
+        <BookingLayout>
             <Stepper currentStep={2} />
             <StepCard
                 title="Choose Consultation Type"
@@ -75,6 +76,6 @@ export default function ConsultationTypePage() {
                     ))}
                 </div>
             </StepCard>
-        </>
+        </BookingLayout>
     );
 }

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useBooking } from "@/context/BookingContext";
 import StepCard from "@/components/StepCard";
 import Stepper from "@/components/Stepper";
+import BookingLayout from "@/components/BookingLayout";
 import { BtrOption } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Star, Sparkles } from "lucide-react";
@@ -34,7 +35,7 @@ export default function BtrOptionPage() {
     };
 
     return (
-        <>
+        <BookingLayout>
             <Stepper currentStep={3} />
             <StepCard
                 title="Birth Time Rectification"
@@ -70,6 +71,6 @@ export default function BtrOptionPage() {
                     ))}
                 </div>
             </StepCard>
-        </>
+        </BookingLayout>
     );
 }

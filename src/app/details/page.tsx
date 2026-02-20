@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useBooking } from "@/context/BookingContext";
 import StepCard from "@/components/StepCard";
 import Stepper from "@/components/Stepper";
+import BookingLayout from "@/components/BookingLayout";
 import { Gender } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { User, Mail, Phone, MapPin, Calendar, Clock, MessageSquare } from "lucide-react";
@@ -118,7 +119,7 @@ export default function DetailsPage() {
         );
 
     return (
-        <>
+        <BookingLayout>
             <Stepper currentStep={5} />
             <StepCard
                 title="Birth & Contact Details"
@@ -307,6 +308,6 @@ export default function DetailsPage() {
                     </button>
                 </div>
             </StepCard>
-        </>
+        </BookingLayout>
     );
 }

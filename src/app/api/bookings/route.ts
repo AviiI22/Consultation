@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import Razorpay from "razorpay";
+import { rateLimit } from "@/lib/rate-limit";
 
 const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID || "rzp_test_placeholder",
@@ -8,6 +9,15 @@ const razorpay = new Razorpay({
 });
 
 export async function POST(request: NextRequest) {
+    // Rate limiting
+    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+    if (!rateLimit(ip, 5, 60000)) {
+        return NextResponse.json(
+            { error: "Too many requests. Please try again later." },
+            { status: 429 }
+        );
+    }
+
     try {
         const body = await request.json();
 
@@ -26,6 +36,8 @@ export async function POST(request: NextRequest) {
             birthPlace,
             concern,
             amount,
+            promoCode,
+            discountPercent,
         } = body;
 
         // Validate required fields
@@ -59,6 +71,27 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Calculate discount
+        let discountAmount = 0;
+        let finalAmount = parseInt(amount);
+        if (promoCode && discountPercent > 0) {
+            // Verify the promo code server-side
+            const promo = await prisma.promoCode.findUnique({
+                where: { code: promoCode },
+            });
+            if (promo && promo.isActive && promo.usedCount < promo.maxUses) {
+                discountAmount = Math.round((finalAmount * promo.discountPercent) / 100);
+                finalAmount = finalAmount - discountAmount;
+                if (finalAmount < 1) finalAmount = 1; // minimum ₹1
+
+                // Increment usage
+                await prisma.promoCode.update({
+                    where: { id: promo.id },
+                    data: { usedCount: promo.usedCount + 1 },
+                });
+            }
+        }
+
         // Create booking in database
         const booking = await prisma.booking.create({
             data: {
@@ -75,8 +108,11 @@ export async function POST(request: NextRequest) {
                 phone,
                 birthPlace,
                 concern,
-                amount: parseInt(amount),
+                amount: finalAmount,
+                discountAmount,
+                promoCode: promoCode || null,
                 paymentStatus: "Pending",
+                status: "Upcoming",
             },
         });
 
@@ -84,20 +120,18 @@ export async function POST(request: NextRequest) {
         let razorpayOrderId = `order_demo_${booking.id.slice(0, 8)}`;
         try {
             const order = await razorpay.orders.create({
-                amount: amount * 100, // Razorpay expects paise
+                amount: finalAmount * 100, // Razorpay expects paise
                 currency: "INR",
                 receipt: booking.id,
             });
             razorpayOrderId = order.id;
 
-            // Update booking with Razorpay order ID
             await prisma.booking.update({
                 where: { id: booking.id },
                 data: { razorpayOrderId: order.id },
             });
         } catch (rzpError) {
             console.log("Razorpay order creation skipped (test mode):", rzpError);
-            // Still save the demo order ID
             await prisma.booking.update({
                 where: { id: booking.id },
                 data: { razorpayOrderId },

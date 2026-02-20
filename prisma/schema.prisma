@@ -8,23 +8,70 @@ datasource db {
 }
 
 model Booking {
-  id               String   @id @default(uuid())
-  consultationType String
-  btrOption        String
-  duration         Int
-  consultationDate String
-  consultationTime String
-  name             String
-  dob              String
-  tob              String
-  gender           String
-  email            String
-  phone            String
-  birthPlace       String
-  concern          String
-  amount           Int
-  paymentStatus    String   @default("Pending")
-  razorpayOrderId  String?
+  id                String   @id @default(uuid())
+  consultationType  String
+  btrOption         String
+  duration          Int
+  consultationDate  String
+  consultationTime  String
+  name              String
+  dob               String
+  tob               String
+  gender            String
+  email             String
+  phone             String
+  birthPlace        String
+  concern           String
+  amount            Int
+  paymentStatus     String   @default("Pending")
+  status            String   @default("Upcoming") // Upcoming | Completed | Cancelled
+  razorpayOrderId   String?
   razorpayPaymentId String?
-  createdAt        DateTime @default(now())
+  meetingLink       String?
+  adminNotes        String?
+  promoCode         String?
+  discountAmount    Int      @default(0)
+  createdAt         DateTime @default(now())
+}
+
+model Availability {
+  id        String  @id @default(uuid())
+  dayOfWeek Int                // 0=Sun..6=Sat
+  timeSlot  String             // "7:00 PM - 8:00 PM"
+  isActive  Boolean @default(true)
+}
+
+model BlockedDate {
+  id     String  @id @default(uuid())
+  date   String  @unique
+  reason String?
+}
+
+model PromoCode {
+  id              String   @id @default(uuid())
+  code            String   @unique
+  discountPercent Int
+  maxUses         Int      @default(1)
+  usedCount       Int      @default(0)
+  isActive        Boolean  @default(true)
+  expiresAt       String?
+  createdAt       DateTime @default(now())
+}
+
+model Testimonial {
+  id         String   @id @default(uuid())
+  name       String
+  rating     Int
+  text       String
+  isApproved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model Waitlist {
+  id        String   @id @default(uuid())
+  date      String
+  name      String
+  email     String
+  phone     String
+  createdAt DateTime @default(now())
 }

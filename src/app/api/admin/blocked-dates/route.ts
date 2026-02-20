@@ -1,0 +1,47 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+export async function GET() {
+    try {
+        const dates = await prisma.blockedDate.findMany({
+            orderBy: { date: "asc" },
+        });
+        return NextResponse.json({ dates });
+    } catch (error) {
+        console.error("Fetch blocked dates error:", error);
+        return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
+    }
+}
+
+export async function POST(request: NextRequest) {
+    try {
+        const { date, reason } = await request.json();
+
+        const existing = await prisma.blockedDate.findUnique({ where: { date } });
+        if (existing) {
+            return NextResponse.json(
+                { error: "This date is already blocked" },
+                { status: 409 }
+            );
+        }
+
+        const blocked = await prisma.blockedDate.create({
+            data: { date, reason },
+        });
+        return NextResponse.json({ blocked });
+    } catch (error) {
+        console.error("Block date error:", error);
+        return NextResponse.json({ error: "Failed to block date" }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: NextRequest) {
+    try {
+        const { id } = await request.json();
+        await prisma.blockedDate.delete({ where: { id } });
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error("Unblock date error:", error);
+        return NextResponse.json({ error: "Failed to unblock" }, { status: 500 });
+    }
+}
