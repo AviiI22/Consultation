@@ -30,8 +30,8 @@ export interface BookingResponse {
 }
 
 export const PRICING: Record<Duration, number> = {
-    30: 10,
-    60: 10,
+    30: 2499,
+    60: 4999,
 };
 
 export const STEPS = [

@@ -26,7 +26,7 @@ import {
 
 export default function SummaryPage() {
     const router = useRouter();
-    const { formData, updateFormData, setCurrentStep, currency } = useBooking();
+    const { formData, updateFormData, setCurrentStep, currency, isLoaded } = useBooking();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
@@ -43,7 +43,7 @@ export default function SummaryPage() {
         }
 
         if (formData.duration === 60) {
-            amount = amount * 2;
+            amount = amount * 2 + (currency === "INR" ? 1 : 0);
         }
 
         if (formData.btrOption === "with-btr") {
@@ -140,17 +140,17 @@ export default function SummaryPage() {
         {
             icon: <Star className="w-4 h-4" />,
             label: "Consultation Type",
-            value: formData.consultationType === "urgent" ? "Urgent Consultation" : "Normal Consultation",
+            value: !formData.consultationType ? "—" : (formData.consultationType === "urgent" ? "Urgent Consultation" : "Normal Consultation"),
         },
         {
             icon: <CheckCircle className="w-4 h-4" />,
             label: "Birth Time Rectification",
-            value: formData.btrOption === "with-btr" ? "With BTR" : "Without BTR",
+            value: !formData.btrOption ? "—" : (formData.btrOption === "with-btr" ? "With BTR" : "Without BTR"),
         },
         {
             icon: <Clock className="w-4 h-4" />,
             label: "Duration",
-            value: formData.duration === 60 ? "1 Hour" : "30 Minutes",
+            value: !formData.duration ? "—" : (formData.duration === 60 ? "1 Hour" : "30 Minutes"),
         },
         {
             icon: <Calendar className="w-4 h-4" />,
@@ -198,6 +198,20 @@ export default function SummaryPage() {
             value: formData.birthPlace,
         },
     ];
+
+    if (!isLoaded) {
+        return (
+            <BookingLayout>
+                <Stepper currentStep={6} />
+                <StepCard title="Booking Summary" subtitle="Loading your details...">
+                    <div className="py-20 flex flex-col items-center justify-center space-y-4">
+                        <Loader2 className="w-10 h-10 text-gold-500 animate-spin" />
+                        <p className="text-cream-700 font-medium anim-pulse">Restoring your session...</p>
+                    </div>
+                </StepCard>
+            </BookingLayout>
+        );
+    }
 
     return (
         <BookingLayout>

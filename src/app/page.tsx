@@ -199,19 +199,16 @@ export default function LandingPage() {
                                 Book Now
                             </Link>
                         </div>
-                        <div className="rounded-2xl bg-gradient-to-b from-gold-50 to-white border-2 border-gold-300 p-8 text-center relative hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gold-500 text-white text-xs font-medium">
-                                Popular
-                            </div>
+                        <div className="rounded-2xl bg-white border border-cream-400/50 p-8 text-center hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
                             <Clock className="w-8 h-8 text-gold-500 mx-auto mb-3" />
                             <h3 className="text-xl font-serif font-bold text-gray-800 mb-1">60 Minutes</h3>
                             <p className="text-3xl font-bold text-gold-600 my-4">
-                                {formatPrice(PRICING[currency].NORMAL * 2, currency)}
+                                {formatPrice(PRICING[currency].NORMAL * 2 + (currency === "INR" ? 1 : 0), currency)}
                             </p>
                             <p className="text-sm text-gray-500 mb-6">In-depth detailed reading</p>
                             <Link
                                 href="/book"
-                                className="inline-block px-6 py-3 rounded-xl bg-gold-500 text-white font-medium text-sm hover:bg-gold-400 transition-all duration-300 hover:shadow-lg hover:shadow-gold-500/20"
+                                className="inline-block px-6 py-3 rounded-xl bg-cream-100 text-gold-700 font-medium text-sm border border-cream-400/50 hover:bg-gold-500 hover:text-white transition-all duration-300"
                             >
                                 Book Now
                             </Link>

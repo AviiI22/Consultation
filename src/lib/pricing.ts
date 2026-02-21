@@ -1,8 +1,8 @@
 export const PRICING = {
     INR: {
-        NORMAL: 10,
-        URGENT: 20, // Example
-        BTR: 30, // Example
+        NORMAL: 2499,
+        URGENT: 4999,
+        BTR: 2500,
         SYMBOL: "₹",
     },
     USD: {
