@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { BookingProvider } from "@/context/BookingContext";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
     title: "Astrology Consultation | Expert Vedic Readings & Personalized Guidance",
@@ -36,6 +37,7 @@ export default function RootLayout({
                     {children}
                 </BookingProvider>
                 <Analytics />
+                <SpeedInsights />
             </body>
         </html>
     );
