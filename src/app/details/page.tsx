@@ -105,7 +105,7 @@ export default function DetailsPage() {
 
         if (!result.success) {
             const errs: Record<string, string> = {};
-            result.error.errors.forEach((err) => {
+            result.error.issues.forEach((err) => {
                 if (err.path[0]) errs[err.path[0] as string] = err.message;
             });
             setErrors(errs);

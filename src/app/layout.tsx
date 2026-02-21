@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { BookingProvider } from "@/context/BookingContext";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
     title: "Astrology Consultation | Expert Vedic Readings & Personalized Guidance",
@@ -34,6 +35,7 @@ export default function RootLayout({
                 <BookingProvider>
                     {children}
                 </BookingProvider>
+                <Analytics />
             </body>
         </html>
     );
