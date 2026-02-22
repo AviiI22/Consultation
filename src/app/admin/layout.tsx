@@ -1,6 +1,7 @@
 "use client";
 
 import { SessionProvider } from "next-auth/react";
+import { usePathname } from "next/navigation";
 import AdminNav from "@/components/AdminNav";
 
 export default function AdminLayout({
@@ -8,11 +9,14 @@ export default function AdminLayout({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    const pathname = usePathname();
+    const isLoginPage = pathname === "/admin/login";
+
     return (
         <SessionProvider>
             <div className="min-h-screen bg-cream-100">
-                <AdminNav />
-                <div className="py-6">{children}</div>
+                {!isLoginPage && <AdminNav />}
+                <div className={!isLoginPage ? "py-6" : ""}>{children}</div>
             </div>
         </SessionProvider>
     );
