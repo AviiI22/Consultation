@@ -13,6 +13,7 @@ import {
     Zap,
     Heart,
     Eye,
+    Lock,
 } from "lucide-react";
 import { useBooking } from "@/context/BookingContext";
 import { PRICING, formatPrice } from "@/lib/pricing";
@@ -72,6 +73,13 @@ export default function LandingPage() {
                         ✦ Astrology Consultation
                     </Link>
                     <div className="flex items-center gap-3">
+                        <Link
+                            href="/admin/login"
+                            className="p-2 rounded-lg text-cream-500 hover:text-gold-600 hover:bg-gold-50 transition-all flex items-center justify-center"
+                            title="Admin Login"
+                        >
+                            <Lock className="w-4 h-4" />
+                        </Link>
                         <Link
                             href="/book"
                             className="px-5 py-2 rounded-xl bg-gold-500 hover:bg-gold-400 text-white text-sm font-semibold transition-all hover:shadow-lg hover:shadow-gold-500/20"
