@@ -12,8 +12,8 @@ import { Clock, Calendar, Ban, Loader2, AlertTriangle } from "lucide-react";
 import { format, addDays } from "date-fns";
 
 const durations: { value: Duration; label: string }[] = [
-    { value: 30, label: "30 Minutes" },
-    { value: 60, label: "1 Hour" },
+    { value: 40, label: "40 Minutes" },
+    { value: 90, label: "1 Hour 30 Minutes" },
 ];
 
 interface AvailSlot {

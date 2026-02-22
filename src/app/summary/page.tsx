@@ -26,7 +26,7 @@ import {
 
 export default function SummaryPage() {
     const router = useRouter();
-    const { formData, updateFormData, setCurrentStep, currency, isLoaded } = useBooking();
+    const { formData, updateFormData, setCurrentStep, currency, setCurrency, isLoaded, pricing, convertPrice } = useBooking();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
@@ -37,20 +37,24 @@ export default function SummaryPage() {
     const [promoApplied, setPromoApplied] = useState(!!formData.promoCode);
 
     const getBaseAmount = () => {
-        let amount = PRICING[currency].NORMAL;
-        if (formData.consultationType === "urgent") {
-            amount = PRICING[currency].URGENT;
+        let baseInr = 0;
+
+        if (formData.duration === 40) {
+            baseInr = formData.consultationType === "urgent" ? pricing.inrUrgent40 : pricing.inrNormal40;
+        } else if (formData.duration === 90) {
+            baseInr = formData.consultationType === "urgent" ? pricing.inrUrgent90 : pricing.inrNormal90;
+        } else {
+            // Fallback for any legacy/unexpected value
+            baseInr = pricing.inrNormal40;
         }
 
-        if (formData.duration === 60) {
-            amount = amount * 2 + (currency === "INR" ? 1 : 0);
-        }
+        let amount = convertPrice(baseInr, currency);
 
         if (formData.btrOption === "with-btr") {
-            amount += PRICING[currency].BTR;
+            amount += convertPrice(pricing.inrBtr, currency);
         }
 
-        return amount;
+        return amount
     };
 
     const baseAmount = getBaseAmount();
@@ -150,7 +154,7 @@ export default function SummaryPage() {
         {
             icon: <Clock className="w-4 h-4" />,
             label: "Duration",
-            value: !formData.duration ? "—" : (formData.duration === 60 ? "1 Hour" : "30 Minutes"),
+            value: !formData.duration ? "—" : (formData.duration === 90 ? "1 Hour 30 Minutes" : "40 Minutes"),
         },
         {
             icon: <Calendar className="w-4 h-4" />,
@@ -221,6 +225,32 @@ export default function SummaryPage() {
                 subtitle="Review your details before confirming"
             >
                 <div className="space-y-6">
+                    {/* Currency Selection */}
+                    <div className="rounded-xl bg-white border border-cream-400/50 p-5">
+                        <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                            <CreditCard className="w-4 h-4 text-gold-600" />
+                            Choose Payment Currency
+                        </label>
+                        <select
+                            value={currency}
+                            onChange={(e) => setCurrency(e.target.value)}
+                            className="w-full p-3 rounded-lg bg-cream-50 border border-cream-400/60 text-gray-800 text-sm focus:outline-none focus:border-gold-500 transition-colors"
+                        >
+                            <option value="INR">Indian Rupee (INR)</option>
+                            <option value="USD">US Dollar (USD)</option>
+                            <option value="EUR">Euro (EUR)</option>
+                            <option value="GBP">British Pound (GBP)</option>
+                            <option value="AUD">Australian Dollar (AUD)</option>
+                            <option value="CAD">Canadian Dollar (CAD)</option>
+                            <option value="SGD">Singapore Dollar (SGD)</option>
+                            <option value="AED">UAE Dirham (AED)</option>
+                            <option value="JPY">Japanese Yen (JPY)</option>
+                        </select>
+                        <p className="text-[10px] text-gray-400 mt-2">
+                            * Exchange rates are updated in real-time based on live USD market data.
+                        </p>
+                    </div>
+
                     {/* Summary card */}
                     <div className="rounded-xl bg-cream-100 border border-cream-400/50 divide-y divide-cream-300/60">
                         {summaryItems.map((item, i) => (

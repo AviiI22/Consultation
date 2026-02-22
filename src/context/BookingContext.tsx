@@ -27,9 +27,18 @@ interface BookingContextType {
     resetFormData: () => void;
     currentStep: number;
     setCurrentStep: (step: number) => void;
-    currency: "INR" | "USD";
-    setCurrency: (c: "INR" | "USD") => void;
+    currency: string;
+    setCurrency: (c: string) => void;
     isLoaded: boolean;
+    pricing: {
+        inrNormal40: number;
+        inrUrgent40: number;
+        inrNormal90: number;
+        inrUrgent90: number;
+        inrBtr: number;
+    };
+    rates: Record<string, number>;
+    convertPrice: (inrAmount: number, targetCurrency: string) => number;
 }
 
 const BookingContext = createContext<BookingContextType | undefined>(undefined);
@@ -37,18 +46,49 @@ const BookingContext = createContext<BookingContextType | undefined>(undefined);
 export function BookingProvider({ children }: { children: ReactNode }) {
     const [formData, setFormData] = useState<BookingFormData>(initialState);
     const [currentStep, setCurrentStep] = useState(1);
-    const [currency, setCurrency] = useState<"INR" | "USD">("INR");
+    const [currency, setCurrency] = useState<string>("INR");
     const [isLoaded, setIsLoaded] = useState(false);
+    const [pricing, setPricing] = useState({
+        inrNormal40: 2499,
+        inrUrgent40: 4999,
+        inrNormal90: 4500,
+        inrUrgent90: 8000,
+        inrBtr: 2500,
+    });
+    const [rates, setRates] = useState<Record<string, number>>({ INR: 87.5 }); // Fallback rate
 
     // Load state from localStorage on mount
     React.useEffect(() => {
+        const fetchPricingAndRates = async () => {
+            try {
+                // Fetch Pricing
+                const pricingRes = await fetch("/api/pricing");
+                const pricingData = await pricingRes.json();
+                if (pricingRes.ok && pricingData.pricing) {
+                    setPricing(pricingData.pricing);
+                }
+
+                // Fetch Rates
+                const ratesRes = await fetch("/api/currency/rates");
+                const ratesData = await ratesRes.json();
+                if (ratesRes.ok && ratesData.rates) {
+                    setRates(ratesData.rates);
+                }
+            } catch (error) {
+                console.error("Failed to fetch startup data:", error);
+            }
+        };
+
+        fetchPricingAndRates();
+
         const savedFormData = localStorage.getItem("booking_formData");
         const savedStep = localStorage.getItem("booking_currentStep");
         const savedCurrency = localStorage.getItem("booking_currency");
 
         if (savedFormData) setFormData(JSON.parse(savedFormData));
         if (savedStep) setCurrentStep(parseInt(savedStep));
-        if (savedCurrency) setCurrency(savedCurrency as "INR" | "USD");
+        // Only set saved currency if it's not "USD" or if we want to allow persistent currency
+        if (savedCurrency) setCurrency(savedCurrency);
 
         // Auto-detect timezone
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -85,9 +125,32 @@ export function BookingProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem("booking_currency");
     };
 
+    const convertPrice = (inrAmount: number, targetCurrency: string) => {
+        if (targetCurrency === "INR") return inrAmount;
+        const rate = rates[targetCurrency];
+        if (!rate) {
+            // If it's USD and rate is missing (unlikely), use a safe fallback or return original
+            // but since INR is base, USD rate should be in the rates object (e.g. 0.012)
+            return inrAmount;
+        }
+        return Math.round(inrAmount * rate);
+    };
+
     return (
         <BookingContext.Provider
-            value={{ formData, updateFormData, resetFormData, currentStep, setCurrentStep, currency, setCurrency, isLoaded }}
+            value={{
+                formData,
+                updateFormData,
+                resetFormData,
+                currentStep,
+                setCurrentStep,
+                currency,
+                setCurrency,
+                isLoaded,
+                pricing,
+                rates,
+                convertPrice
+            }}
         >
             {children}
         </BookingContext.Provider>

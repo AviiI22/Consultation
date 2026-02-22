@@ -168,7 +168,7 @@ export default function PaymentPage() {
                                 <div className="rounded-xl bg-white border border-cream-400/60 p-5">
                                     <p className="text-gray-500 text-sm mb-1">Amount to Pay</p>
                                     <p className="text-3xl font-serif font-bold text-gray-800">
-                                        {formatPrice(bookingInfo.amount, currency as any)}
+                                        {formatPrice(bookingInfo.amount, currency)}
                                     </p>
                                     <p className="text-gray-400 text-xs mt-2">
                                         Booking ID: {bookingInfo.bookingId.slice(0, 8)}...

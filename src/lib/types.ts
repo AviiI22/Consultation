@@ -1,6 +1,6 @@
 export type ConsultationType = "normal" | "urgent";
 export type BtrOption = "without-btr" | "with-btr";
-export type Duration = 30 | 60;
+export type Duration = 40 | 90;
 export type TimeSlot = string;
 export type Gender = "Male" | "Female" | "Other";
 
@@ -28,11 +28,6 @@ export interface BookingResponse {
     amount: number;
     razorpayOrderId: string;
 }
-
-export const PRICING: Record<Duration, number> = {
-    30: 2499,
-    60: 4999,
-};
 
 export const STEPS = [
     { number: 1, label: "Terms", path: "/book" },

@@ -57,7 +57,7 @@ export async function GET() {
         // Duration distribution
         const durationCounts: Record<string, number> = {};
         for (const b of bookings) {
-            const label = b.duration === 60 ? "1 Hour" : "30 Min";
+            const label = b.duration === 90 ? "1 Hour 30 Min" : "40 Min";
             durationCounts[label] = (durationCounts[label] || 0) + 1;
         }
 

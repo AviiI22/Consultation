@@ -99,3 +99,18 @@ model Waitlist {
   phone     String
   createdAt DateTime @default(now())
 }
+model Pricing {
+  id              String   @id @default("singleton")
+  inrNormal40     Int      @default(2499)
+  inrUrgent40     Int      @default(4999)
+  inrNormal90     Int      @default(4500)
+  inrUrgent90     Int      @default(8000)
+  inrBtr          Int      @default(2500)
+  // Legacy fields (can be kept or removed after migration)
+  inrNormal       Int      @default(2499)
+  inrUrgent       Int      @default(4999)
+  usdNormal       Int      @default(30)
+  usdUrgent       Int      @default(60)
+  usdBtr          Int      @default(40)
+  updatedAt       DateTime @updatedAt
+}

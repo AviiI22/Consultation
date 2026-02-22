@@ -14,7 +14,6 @@ import {
     Heart,
     Eye,
 } from "lucide-react";
-import { CurrencyToggle } from "@/components/CurrencyToggle";
 import { useBooking } from "@/context/BookingContext";
 import { PRICING, formatPrice } from "@/lib/pricing";
 
@@ -55,7 +54,7 @@ const FAQs = [
 export default function LandingPage() {
     const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
     const [openFaq, setOpenFaq] = useState<number | null>(null);
-    const { currency } = useBooking();
+    const { currency, pricing, convertPrice } = useBooking();
 
     useEffect(() => {
         fetch("/api/testimonials")
@@ -73,9 +72,6 @@ export default function LandingPage() {
                         ✦ Astrology Consultation
                     </Link>
                     <div className="flex items-center gap-3">
-                        <div className="hidden sm:block">
-                            <CurrencyToggle />
-                        </div>
                         <Link
                             href="/book"
                             className="px-5 py-2 rounded-xl bg-gold-500 hover:bg-gold-400 text-white text-sm font-semibold transition-all hover:shadow-lg hover:shadow-gold-500/20"
@@ -175,47 +171,6 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* Pricing */}
-            <section className="py-20 bg-cream-50">
-                <div className="max-w-4xl mx-auto px-4">
-                    <div className="text-center mb-12">
-                        <h2 className="text-3xl sm:text-4xl font-serif font-bold text-gray-900 mb-3">
-                            Simple <span className="text-gold-gradient">Pricing</span>
-                        </h2>
-                        <p className="text-gray-500">Transparent pricing with no hidden fees</p>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div className="rounded-2xl bg-white border border-cream-400/50 p-8 text-center hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                            <Clock className="w-8 h-8 text-gold-500 mx-auto mb-3" />
-                            <h3 className="text-xl font-serif font-bold text-gray-800 mb-1">30 Minutes</h3>
-                            <p className="text-3xl font-bold text-gold-600 my-4">
-                                {formatPrice(PRICING[currency].NORMAL, currency)}
-                            </p>
-                            <p className="text-sm text-gray-500 mb-6">Quick focused consultation</p>
-                            <Link
-                                href="/book"
-                                className="inline-block px-6 py-3 rounded-xl bg-cream-100 text-gold-700 font-medium text-sm border border-cream-400/50 hover:bg-gold-500 hover:text-white transition-all duration-300"
-                            >
-                                Book Now
-                            </Link>
-                        </div>
-                        <div className="rounded-2xl bg-white border border-cream-400/50 p-8 text-center hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                            <Clock className="w-8 h-8 text-gold-500 mx-auto mb-3" />
-                            <h3 className="text-xl font-serif font-bold text-gray-800 mb-1">60 Minutes</h3>
-                            <p className="text-3xl font-bold text-gold-600 my-4">
-                                {formatPrice(PRICING[currency].NORMAL * 2 + (currency === "INR" ? 1 : 0), currency)}
-                            </p>
-                            <p className="text-sm text-gray-500 mb-6">In-depth detailed reading</p>
-                            <Link
-                                href="/book"
-                                className="inline-block px-6 py-3 rounded-xl bg-cream-100 text-gold-700 font-medium text-sm border border-cream-400/50 hover:bg-gold-500 hover:text-white transition-all duration-300"
-                            >
-                                Book Now
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </section>
 
             {/* Testimonials */}
             {testimonials.length > 0 && (
