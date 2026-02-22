@@ -98,7 +98,7 @@ export default function ConfirmationPage() {
                                 Duration
                             </span>
                             <span className="text-gray-800 text-sm">
-                                {formData.duration === 60 ? "1 Hour" : "30 Minutes"}
+                                {formData.duration === 90 ? "1 Hour 30 Minutes" : "40 Minutes"}
                             </span>
                         </div>
 
