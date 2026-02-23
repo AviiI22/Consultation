@@ -8,7 +8,7 @@ export async function GET() {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
-        const packages = await (prisma as any).servicePackage.findMany({
+        const packages = await prisma.servicePackage.findMany({
             orderBy: { createdAt: "desc" },
         });
         return NextResponse.json({ packages });
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const { name, description, sessionCount, price } = body;
 
-        const pkg = await (prisma as any).servicePackage.create({
+        const pkg = await prisma.servicePackage.create({
             data: {
                 name,
                 description,

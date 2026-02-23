@@ -10,7 +10,7 @@ export async function sendSessionReminders() {
 
     // For this implementation, we search for bookings on the same date string
     // Simplified: Find all "Paid" bookings for "tomorrow"
-    const targetDate = format(tomorrow, "dd/MM/yyyy");
+    const targetDate = format(tomorrow, "yyyy-MM-dd");
 
     const bookings = await prisma.booking.findMany({
         where: {
@@ -31,16 +31,45 @@ export async function sendSessionReminders() {
             // Send WhatsApp Reminder
             // We use the same confirmation function or a dedicated reminder one
             // For now, let's reuse/adapt confirmation as it contains all info
-            await sendWhatsAppConfirmation(booking as any, booking.phone);
+            await sendWhatsAppConfirmation({
+                bookingId: booking.id,
+                name: booking.name,
+                consultationType: booking.consultationType,
+                btrOption: booking.btrOption,
+                duration: booking.duration,
+                consultationDate: booking.consultationDate,
+                consultationTime: booking.consultationTime,
+                dob: booking.dob,
+                tob: booking.tob,
+                gender: booking.gender,
+                email: booking.email,
+                phone: booking.phone,
+                birthPlace: booking.birthPlace,
+                concern: booking.concern,
+                amount: booking.amount,
+                currency: booking.currency || "INR",
+            }, booking.phone);
 
             // Send Email Reminder
             await sendEmailConfirmation({
-                ...booking,
                 bookingId: booking.id,
+                name: booking.name,
                 consultationType: booking.consultationType,
                 btrOption: booking.btrOption,
-                userTimezone: (booking as any).userTimezone,
-            } as any);
+                duration: booking.duration,
+                consultationDate: booking.consultationDate,
+                consultationTime: booking.consultationTime,
+                dob: booking.dob,
+                tob: booking.tob,
+                gender: booking.gender,
+                email: booking.email,
+                phone: booking.phone,
+                birthPlace: booking.birthPlace,
+                concern: booking.concern,
+                amount: booking.amount,
+                currency: booking.currency || "INR",
+                userTimezone: booking.userTimezone || "UTC",
+            });
 
             results.success++;
         } catch (error) {

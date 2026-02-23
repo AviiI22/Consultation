@@ -80,7 +80,7 @@ export async function PATCH(request: NextRequest) {
         console.log("Admin pricing update request payload:", data);
 
         // Filter out undefined values to avoid Prisma issues
-        const updateData: any = {};
+        const updateData: Record<string, number> = {};
         const fields = [
             'inrNormal40', 'inrUrgent40', 'inrNormal90', 'inrUrgent90', 'inrBtr',
             'inrNormal', 'inrUrgent', 'usdNormal', 'usdUrgent', 'usdBtr'

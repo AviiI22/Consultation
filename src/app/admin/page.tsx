@@ -385,7 +385,9 @@ export default function AdminDashboard() {
                                 onClick={async () => {
                                     setActionLoading("reminders");
                                     try {
-                                        const res = await fetch("/api/admin/reminders/send");
+                                        const res = await fetch("/api/admin/reminders/send", {
+                                            method: "POST",
+                                        });
                                         const data = await res.json();
                                         alert(data.message || data.error);
                                     } catch {
@@ -540,7 +542,7 @@ export default function AdminDashboard() {
                                                 {c.bookingCount} booking{c.bookingCount !== 1 ? "s" : ""}
                                             </span>
                                         </div>
-                                        <span className="text-sm font-bold text-gold-600">INR {c.totalSpent.toLocaleString("en-IN")}</span>
+                                        <span className="text-sm font-bold text-gold-600">{c.totalSpent.toLocaleString("en-IN")}</span>
                                     </div>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs text-gray-600">
                                         <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-gold-400" />{c.email}</span>
@@ -685,6 +687,87 @@ export default function AdminDashboard() {
                             </button>
                             <button
                                 onClick={() => setAnnounceModal(false)}
+                                className="px-6 py-3 rounded-xl bg-cream-100 text-cream-700 text-sm font-semibold hover:bg-cream-200 transition-all"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Package Creation Modal */}
+            {packageModal && (
+                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setPackageModal(false)}>
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-serif text-gray-800 mb-3 flex items-center gap-2">
+                            <Box className="w-5 h-5 text-gold-600" /> Create Package
+                        </h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 mb-1">Name</label>
+                                <input type="text" value={pkgName} onChange={(e) => setPkgName(e.target.value)}
+                                    className="w-full p-3 rounded-xl bg-cream-50 border-2 border-cream-400/60 text-sm focus:outline-none focus:border-gold-500"
+                                    placeholder="e.g. Silver Package" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 mb-1">Description</label>
+                                <textarea value={pkgDesc} onChange={(e) => setPkgDesc(e.target.value)} rows={3}
+                                    className="w-full p-3 rounded-xl bg-cream-50 border-2 border-cream-400/60 text-sm focus:outline-none focus:border-gold-500 resize-none"
+                                    placeholder="Package description..." />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 mb-1">Sessions</label>
+                                    <input type="number" value={pkgSessions} onChange={(e) => setPkgSessions(e.target.value)}
+                                        className="w-full p-3 rounded-xl bg-cream-50 border-2 border-cream-400/60 text-sm focus:outline-none focus:border-gold-500"
+                                        placeholder="3" min="1" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 mb-1">Price (₹)</label>
+                                    <input type="number" value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)}
+                                        className="w-full p-3 rounded-xl bg-cream-50 border-2 border-cream-400/60 text-sm focus:outline-none focus:border-gold-500"
+                                        placeholder="5999" min="1" />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex gap-2 mt-6">
+                            <button
+                                onClick={async () => {
+                                    if (!pkgName || !pkgSessions || !pkgPrice) return alert("Please fill all fields");
+                                    setActionLoading("createPkg");
+                                    try {
+                                        const res = await fetch("/api/admin/packages", {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({
+                                                name: pkgName,
+                                                description: pkgDesc,
+                                                sessionCount: pkgSessions,
+                                                price: pkgPrice,
+                                            }),
+                                        });
+                                        if (res.ok) {
+                                            await fetchPackages();
+                                            setPackageModal(false);
+                                            setPkgName(""); setPkgDesc(""); setPkgSessions(""); setPkgPrice("");
+                                        } else {
+                                            const data = await res.json();
+                                            alert(data.error || "Failed to create package");
+                                        }
+                                    } catch {
+                                        alert("Failed to create package");
+                                    } finally {
+                                        setActionLoading(null);
+                                    }
+                                }}
+                                disabled={actionLoading === "createPkg"}
+                                className="flex-1 py-3 rounded-xl bg-gold-600 text-white text-sm font-semibold hover:bg-gold-500 transition-all shadow-md disabled:opacity-50"
+                            >
+                                {actionLoading === "createPkg" ? "Creating..." : "Create Package"}
+                            </button>
+                            <button
+                                onClick={() => setPackageModal(false)}
                                 className="px-6 py-3 rounded-xl bg-cream-100 text-cream-700 text-sm font-semibold hover:bg-cream-200 transition-all"
                             >
                                 Cancel

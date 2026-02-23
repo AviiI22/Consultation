@@ -15,21 +15,34 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Missing booking ID" }, { status: 400 });
         }
 
+        // All three Razorpay fields are REQUIRED for payment verification
+        if (!razorpay_signature || !razorpay_order_id || !razorpay_payment_id) {
+            return NextResponse.json(
+                { error: "Missing payment verification fields" },
+                { status: 400 }
+            );
+        }
+
         // Verify Razorpay signature
-        const secret = process.env.RAZORPAY_KEY_SECRET || "placeholder_secret";
+        const secret = process.env.RAZORPAY_KEY_SECRET;
+        if (!secret) {
+            console.error("RAZORPAY_KEY_SECRET is not configured");
+            return NextResponse.json(
+                { error: "Payment verification is not configured" },
+                { status: 500 }
+            );
+        }
 
-        if (razorpay_signature && razorpay_order_id && razorpay_payment_id) {
-            const expectedSignature = crypto
-                .createHmac("sha256", secret)
-                .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-                .digest("hex");
+        const expectedSignature = crypto
+            .createHmac("sha256", secret)
+            .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+            .digest("hex");
 
-            if (expectedSignature !== razorpay_signature) {
-                return NextResponse.json(
-                    { error: "Invalid payment signature" },
-                    { status: 400 }
-                );
-            }
+        if (expectedSignature !== razorpay_signature) {
+            return NextResponse.json(
+                { error: "Invalid payment signature" },
+                { status: 400 }
+            );
         }
 
         // Update booking status
@@ -37,7 +50,7 @@ export async function POST(request: NextRequest) {
             where: { id: bookingId },
             data: {
                 paymentStatus: "Paid",
-                razorpayPaymentId: razorpay_payment_id || "demo_payment",
+                razorpayPaymentId: razorpay_payment_id,
             },
         });
 
@@ -59,7 +72,7 @@ export async function POST(request: NextRequest) {
                 birthPlace: booking.birthPlace,
                 concern: booking.concern,
                 amount: booking.amount,
-                currency: (booking as any).currency || "INR",
+                currency: booking.currency || "INR",
             },
             booking.phone
         ).then((result) => {
@@ -87,47 +100,38 @@ export async function POST(request: NextRequest) {
             birthPlace: booking.birthPlace,
             concern: booking.concern,
             amount: booking.amount,
-            currency: (booking as any).currency || "INR",
-            meetingLink: (booking as any).meetingLink,
-            userTimezone: (booking as any).userTimezone || "UTC",
+            currency: booking.currency || "INR",
+            meetingLink: booking.meetingLink,
+            userTimezone: booking.userTimezone || "UTC",
         };
 
-        // 3. Create Google Calendar Event (non-blocking but we'll try to get the link for email if possible)
-        // Note: For better UX, we could make this blocking if we want the email to definitely have the link,
-        // but let's keep it non-blocking and just re-send or handle gracefully.
-
-        // Fix date parsing: consultationDate is "yyyy-MM-dd", consultationTime is "10:00 AM - 11:00 AM" (example)
-        const timePart = booking.consultationTime.split(" - ")[0]; // "10:00 AM"
-        const fullDateStr = `${booking.consultationDate} ${timePart}`; // "2026-02-25 10:00 AM"
+        // Create Google Calendar Event (non-blocking — fire and forget)
+        const timePart = booking.consultationTime.split(" - ")[0];
+        const fullDateStr = `${booking.consultationDate} ${timePart}`;
         const dateObj = parse(fullDateStr, "yyyy-MM-dd h:mm a", new Date());
 
         if (isValid(dateObj)) {
-            try {
-                const event = await createConsultationEvent({
-                    summary: `Astrology Consultation: ${booking.name}`,
-                    description: `Consultation Type: ${booking.consultationType}\nBTR Option: ${booking.btrOption}\nDuration: ${booking.duration} mins\nConcern: ${booking.concern}`,
-                    startTime: dateObj,
-                    durationMinutes: booking.duration,
-                    attendeeEmail: booking.email,
-                    timezone: (booking as any).userTimezone || "UTC",
-                });
-
+            createConsultationEvent({
+                summary: `Astrology Consultation: ${booking.name}`,
+                description: `Consultation Type: ${booking.consultationType}\nBTR Option: ${booking.btrOption}\nDuration: ${booking.duration} mins\nConcern: ${booking.concern}`,
+                startTime: dateObj,
+                durationMinutes: booking.duration,
+                attendeeEmail: booking.email,
+                timezone: booking.userTimezone || "UTC",
+            }).then(async (event) => {
                 if (event && event.hangoutLink) {
                     console.log(`Calendar event created: ${event.hangoutLink}`);
-                    // Save the meeting link to the booking
                     await prisma.booking.update({
                         where: { id: booking.id },
                         data: { meetingLink: event.hangoutLink },
                     });
-                    // Attach to our data object for email/whatsapp if we want
-                    (emailBookingData as any).meetingLink = event.hangoutLink;
                 }
-            } catch (err) {
+            }).catch((err) => {
                 console.error("Failed to create calendar event:", err);
-            }
+            });
         }
 
-        // Now send email confirmation (it might have the meeting link now)
+        // Send email confirmation (non-blocking)
         sendEmailConfirmation(emailBookingData).then((result) => {
             if (result.success) {
                 console.log(`Email sent for booking ${booking.id}`);

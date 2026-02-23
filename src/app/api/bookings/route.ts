@@ -3,9 +3,16 @@ import { prisma } from "@/lib/prisma";
 import Razorpay from "razorpay";
 import { rateLimit } from "@/lib/rate-limit";
 
+const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
+const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET;
+
+if (!razorpayKeyId || !razorpayKeySecret) {
+    console.warn("WARNING: RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET not configured. Payment creation will fail.");
+}
+
 const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID || "rzp_test_placeholder",
-    key_secret: process.env.RAZORPAY_KEY_SECRET || "placeholder_secret",
+    key_id: razorpayKeyId || "",
+    key_secret: razorpayKeySecret || "",
 });
 
 export async function POST(request: NextRequest) {
@@ -56,69 +63,83 @@ export async function POST(request: NextRequest) {
                 { status: 400 }
             );
         }
+        // Calculate discount using atomic operation to prevent race conditions
+        let discountAmount = 0;
+        let finalAmount = parseInt(amount);
+        if (promoCode && discountPercent > 0) {
+            const promo = await prisma.promoCode.findUnique({
+                where: { code: promoCode },
+            });
+            if (promo && promo.isActive && promo.usedCount < promo.maxUses) {
+                // Atomic increment with WHERE guard prevents race conditions
+                const updated = await prisma.promoCode.updateMany({
+                    where: {
+                        id: promo.id,
+                        usedCount: { lt: promo.maxUses },
+                    },
+                    data: { usedCount: { increment: 1 } },
+                });
+                if (updated.count > 0) {
+                    discountAmount = Math.round((finalAmount * promo.discountPercent) / 100);
+                    finalAmount = finalAmount - discountAmount;
+                    if (finalAmount < 1) finalAmount = 1;
+                }
+            }
+        }
 
-        // Check if the timeslot is already booked
-        const existingBooking = await prisma.booking.findFirst({
-            where: {
-                consultationDate,
-                consultationTime,
-                paymentStatus: "Paid",
-            },
+        // Use a transaction to prevent double-booking race conditions
+        const booking = await prisma.$transaction(async (tx) => {
+            // Check if the timeslot is already booked
+            const existingBooking = await tx.booking.findFirst({
+                where: {
+                    consultationDate,
+                    consultationTime,
+                    paymentStatus: "Paid",
+                },
+            });
+
+            if (existingBooking) {
+                throw new Error("SLOT_TAKEN");
+            }
+
+            // Create booking in database
+            return tx.booking.create({
+                data: {
+                    consultationType,
+                    btrOption,
+                    duration: parseInt(duration),
+                    consultationDate,
+                    consultationTime,
+                    name,
+                    dob,
+                    tob,
+                    gender,
+                    email,
+                    phone,
+                    birthPlace,
+                    concern,
+                    amount: finalAmount,
+                    discountAmount,
+                    promoCode: promoCode || null,
+                    paymentStatus: "Pending",
+                    status: "Upcoming",
+                    userTimezone: userTimezone || "UTC",
+                    currency: currency || "INR",
+                },
+            });
+        }).catch((err) => {
+            if (err.message === "SLOT_TAKEN") {
+                return null;
+            }
+            throw err;
         });
 
-        if (existingBooking) {
+        if (!booking) {
             return NextResponse.json(
                 { error: "This timeslot is already booked. Please choose a different date or time." },
                 { status: 409 }
             );
         }
-
-        // Calculate discount
-        let discountAmount = 0;
-        let finalAmount = parseInt(amount);
-        if (promoCode && discountPercent > 0) {
-            // Verify the promo code server-side
-            const promo = await prisma.promoCode.findUnique({
-                where: { code: promoCode },
-            });
-            if (promo && promo.isActive && promo.usedCount < promo.maxUses) {
-                discountAmount = Math.round((finalAmount * promo.discountPercent) / 100);
-                finalAmount = finalAmount - discountAmount;
-                if (finalAmount < 1) finalAmount = 1; // minimum ₹1
-
-                // Increment usage
-                await prisma.promoCode.update({
-                    where: { id: promo.id },
-                    data: { usedCount: promo.usedCount + 1 },
-                });
-            }
-        }
-
-        // Create booking in database
-        const booking = await prisma.booking.create({
-            data: {
-                consultationType,
-                btrOption,
-                duration: parseInt(duration),
-                consultationDate,
-                consultationTime,
-                name,
-                dob,
-                tob,
-                gender,
-                email,
-                phone,
-                birthPlace,
-                concern,
-                amount: finalAmount,
-                discountAmount,
-                promoCode: promoCode || null,
-                paymentStatus: "Pending",
-                status: "Upcoming",
-                userTimezone: userTimezone || "UTC",
-                currency: currency || "INR",
-            },
-        });
 
         // Create Razorpay order
         let razorpayOrderId = `order_demo_${booking.id.slice(0, 8)}`;

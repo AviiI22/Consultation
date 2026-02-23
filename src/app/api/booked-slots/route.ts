@@ -3,8 +3,12 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
     try {
+        const today = new Date().toISOString().split("T")[0];
         const bookings = await prisma.booking.findMany({
-            where: { paymentStatus: "Paid" },
+            where: {
+                paymentStatus: "Paid",
+                consultationDate: { gte: today },
+            },
             select: {
                 consultationDate: true,
                 consultationTime: true,

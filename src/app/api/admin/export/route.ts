@@ -4,6 +4,16 @@ import { Parser } from "json2csv";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+// Sanitize strings to prevent CSV injection
+function sanitizeCSV(value: string | null | undefined): string {
+    if (!value) return "";
+    // Prefix with single quote if starts with formula trigger characters
+    if (/^[=+\-@\t\r]/.test(value)) {
+        return `'${value}`;
+    }
+    return value;
+}
+
 export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -26,13 +36,13 @@ export async function GET(request: NextRequest) {
             bookings.forEach((b) => {
                 if (!clientMap.has(b.email)) {
                     clientMap.set(b.email, {
-                        Name: b.name,
-                        Email: b.email,
-                        Phone: b.phone,
-                        BirthDate: b.dob,
-                        BirthTime: b.tob,
-                        Gender: b.gender,
-                        BirthPlace: b.birthPlace,
+                        Name: sanitizeCSV(b.name),
+                        Email: sanitizeCSV(b.email),
+                        Phone: sanitizeCSV(b.phone),
+                        BirthDate: sanitizeCSV(b.dob),
+                        BirthTime: sanitizeCSV(b.tob),
+                        Gender: sanitizeCSV(b.gender),
+                        BirthPlace: sanitizeCSV(b.birthPlace),
                         TotalBookings: 1,
                         TotalSpent: b.paymentStatus === "Paid" ? b.amount : 0,
                     });
@@ -51,17 +61,17 @@ export async function GET(request: NextRequest) {
                 Time: b.consultationTime,
                 Type: b.consultationType,
                 Duration: b.duration,
-                Name: b.name,
-                Email: b.email,
-                Phone: b.phone,
+                Name: sanitizeCSV(b.name),
+                Email: sanitizeCSV(b.email),
+                Phone: sanitizeCSV(b.phone),
                 Amount: b.amount,
                 Status: b.status,
                 Payment: b.paymentStatus,
-                PromoCode: b.promoCode || "",
+                PromoCode: sanitizeCSV(b.promoCode),
                 Discount: b.discountAmount,
-                Timezone: (b as any).userTimezone,
-                MeetingLink: b.meetingLink || "",
-                Notes: b.adminNotes || "",
+                Timezone: b.userTimezone || "UTC",
+                MeetingLink: sanitizeCSV(b.meetingLink),
+                Notes: sanitizeCSV(b.adminNotes),
                 CreatedAt: b.createdAt.toISOString(),
             }));
             filename = `bookings_${new Date().toISOString().split("T")[0]}.csv`;
