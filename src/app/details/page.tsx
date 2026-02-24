@@ -9,7 +9,54 @@ import Stepper from "@/components/Stepper";
 import BookingLayout from "@/components/BookingLayout";
 import { Gender } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { User, Mail, Phone, MapPin, Calendar, Clock, MessageSquare } from "lucide-react";
+import { User, Mail, Phone, MapPin, Calendar, Clock, MessageSquare, ChevronDown } from "lucide-react";
+
+const COUNTRY_CODES = [
+    { code: "+91", country: "IN", label: "India" },
+    { code: "+1", country: "US", label: "United States" },
+    { code: "+44", country: "GB", label: "United Kingdom" },
+    { code: "+61", country: "AU", label: "Australia" },
+    { code: "+1", country: "CA", label: "Canada" },
+    { code: "+971", country: "AE", label: "UAE" },
+    { code: "+65", country: "SG", label: "Singapore" },
+    { code: "+60", country: "MY", label: "Malaysia" },
+    { code: "+49", country: "DE", label: "Germany" },
+    { code: "+33", country: "FR", label: "France" },
+    { code: "+81", country: "JP", label: "Japan" },
+    { code: "+82", country: "KR", label: "South Korea" },
+    { code: "+86", country: "CN", label: "China" },
+    { code: "+55", country: "BR", label: "Brazil" },
+    { code: "+27", country: "ZA", label: "South Africa" },
+    { code: "+234", country: "NG", label: "Nigeria" },
+    { code: "+254", country: "KE", label: "Kenya" },
+    { code: "+966", country: "SA", label: "Saudi Arabia" },
+    { code: "+974", country: "QA", label: "Qatar" },
+    { code: "+968", country: "OM", label: "Oman" },
+    { code: "+973", country: "BH", label: "Bahrain" },
+    { code: "+965", country: "KW", label: "Kuwait" },
+    { code: "+977", country: "NP", label: "Nepal" },
+    { code: "+94", country: "LK", label: "Sri Lanka" },
+    { code: "+880", country: "BD", label: "Bangladesh" },
+    { code: "+92", country: "PK", label: "Pakistan" },
+    { code: "+64", country: "NZ", label: "New Zealand" },
+    { code: "+31", country: "NL", label: "Netherlands" },
+    { code: "+39", country: "IT", label: "Italy" },
+    { code: "+34", country: "ES", label: "Spain" },
+    { code: "+46", country: "SE", label: "Sweden" },
+    { code: "+41", country: "CH", label: "Switzerland" },
+    { code: "+353", country: "IE", label: "Ireland" },
+    { code: "+62", country: "ID", label: "Indonesia" },
+    { code: "+66", country: "TH", label: "Thailand" },
+    { code: "+63", country: "PH", label: "Philippines" },
+    { code: "+7", country: "RU", label: "Russia" },
+    { code: "+48", country: "PL", label: "Poland" },
+    { code: "+90", country: "TR", label: "Turkey" },
+    { code: "+20", country: "EG", label: "Egypt" },
+    { code: "+52", country: "MX", label: "Mexico" },
+    { code: "+54", country: "AR", label: "Argentina" },
+    { code: "+56", country: "CL", label: "Chile" },
+    { code: "+57", country: "CO", label: "Colombia" },
+];
 
 export default function DetailsPage() {
     const router = useRouter();
@@ -30,7 +77,18 @@ export default function DetailsPage() {
     const [tobPeriod, setTobPeriod] = useState(existingTob.period);
     const [gender, setGender] = useState<Gender | "">(formData.gender || "");
     const [email, setEmail] = useState(formData.email);
-    const [phone, setPhone] = useState(formData.phone);
+    const [countryCode, setCountryCode] = useState("+91");
+    const [phone, setPhone] = useState(() => {
+        // Parse existing phone: strip country code if present
+        const existing = formData.phone;
+        if (existing.startsWith("+")) {
+            const match = COUNTRY_CODES.find((c) => existing.startsWith(c.code));
+            if (match) {
+                return existing.slice(match.code.length);
+            }
+        }
+        return existing;
+    });
     const [birthPlace, setBirthPlace] = useState(formData.birthPlace);
     const [concern, setConcern] = useState(formData.concern);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -86,7 +144,7 @@ export default function DetailsPage() {
             tob: z.string().min(1, "Time of birth is required"),
             gender: z.string().min(1, "Gender is required"),
             email: z.string().email("Enter a valid email"),
-            phone: z.string().regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian phone number"),
+            phone: z.string().regex(/^\+\d{7,15}$/, "Enter a valid phone number"),
             birthPlace: z.string().min(1, "Place of birth is required"),
             concern: z.string().min(10, "Please describe your concern (min 10 characters)"),
         });
@@ -98,7 +156,7 @@ export default function DetailsPage() {
             tob: tobStr,
             gender,
             email: email.trim(),
-            phone: phone.trim().replace(/\s/g, ""),
+            phone: (countryCode + phone.trim().replace(/\s/g, "")),
             birthPlace: birthPlace.trim(),
             concern: concern.trim(),
         });
@@ -124,7 +182,7 @@ export default function DetailsPage() {
             tob,
             gender: gender as Gender,
             email: email.trim(),
-            phone: phone.trim(),
+            phone: countryCode + phone.trim().replace(/\s/g, ""),
             birthPlace: birthPlace.trim(),
             concern: concern.trim(),
         });
@@ -259,13 +317,29 @@ export default function DetailsPage() {
                                 <Phone className="w-4 h-4 text-gold-600" />
                                 Phone Number
                             </label>
-                            <input
-                                type="tel"
-                                value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
-                                placeholder="9876543210"
-                                className={inputClass("phone")}
-                            />
+                            <div className="flex gap-2">
+                                <div className="relative w-[130px] flex-shrink-0">
+                                    <select
+                                        value={countryCode}
+                                        onChange={(e) => setCountryCode(e.target.value)}
+                                        className={cn(inputClass("phone"), "appearance-none cursor-pointer pr-7 text-sm")}
+                                    >
+                                        {COUNTRY_CODES.map((c) => (
+                                            <option key={c.country} value={c.code}>
+                                                {c.country} {c.code}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                </div>
+                                <input
+                                    type="tel"
+                                    value={phone}
+                                    onChange={(e) => setPhone(e.target.value.replace(/[^\d]/g, ""))}
+                                    placeholder="Phone number"
+                                    className={cn(inputClass("phone"), "flex-1")}
+                                />
+                            </div>
                             {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
                         </div>
                     </div>

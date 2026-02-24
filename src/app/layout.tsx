@@ -5,21 +5,21 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
-    title: "Astrology Consultation | Expert Vedic Readings & Personalized Guidance",
+    title: "Sanskar Dixit | Experience True Jyotish — Vedic Astrology Consultation",
     description:
-        "Book a premium astrology consultation session. Get deep insights into your life, career, and relationships from expert Vedic astrologers. Accurate Birth Time Rectification available.",
-    keywords: "vedic astrology, birth chart analysis, birth time rectification, horoscope predictions, career astrology, relationship guidance",
+        "Book a personalized Vedic astrology consultation with Sanskar Dixit. Get authentic insights into your life, career, and relationships through true Jyotish Shastra.",
+    keywords: "sanskar dixit, vedic astrology, jyotish, birth chart analysis, birth time rectification, horoscope predictions, astrology consultation",
     openGraph: {
-        title: "Astrology Consultation | Expert Vedic Readings",
-        description: "Discover your cosmic path with personalized Vedic astrology consultations.",
+        title: "Sanskar Dixit | Experience True Jyotish",
+        description: "Authentic Vedic astrology consultations with Sanskar Dixit. Experience true Jyotish.",
         type: "website",
         locale: "en_IN",
-        siteName: "Astrology Consultation",
+        siteName: "Sanskar Dixit — Vedic Astrology",
     },
     twitter: {
         card: "summary_large_image",
-        title: "Astrology Consultation",
-        description: "Expert Vedic astrology insights for your life journey.",
+        title: "Sanskar Dixit | Experience True Jyotish",
+        description: "Authentic Vedic astrology consultations. Experience true Jyotish.",
     },
     themeColor: '#FDFCF8',
 };
