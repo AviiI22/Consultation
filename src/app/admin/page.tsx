@@ -59,6 +59,7 @@ interface Booking {
     userTimezone: string;
     adminTimezone: string;
     currency: string;
+    createdAt: string;
 }
 
 interface ClientData {
@@ -253,6 +254,13 @@ export default function AdminDashboard() {
                 <span className="flex items-center gap-1 text-gray-500">DOB: {b.dob}</span>
                 <span className="flex items-center gap-1 text-gray-500">TOB: {b.tob}</span>
                 <span className="flex items-center gap-1 text-gray-500">Gender: {b.gender}</span>
+                <span className="flex items-center gap-1 text-gray-500 font-medium col-span-2 sm:col-span-3 bg-gold-50/50 px-2 py-1 rounded">
+                    <Clock className="w-3 h-3 text-gold-600" />
+                    Booked On: {new Date(b.createdAt).toLocaleString("en-IN", {
+                        dateStyle: 'medium',
+                        timeStyle: 'short'
+                    })}
+                </span>
             </div>
 
             {/* Concern */}
