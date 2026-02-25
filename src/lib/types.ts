@@ -26,7 +26,8 @@ export interface BookingFormData {
 export interface BookingResponse {
     id: string;
     amount: number;
-    razorpayOrderId: string;
+    cashfreeOrderId: string;
+    paymentSessionId: string;
 }
 
 export const STEPS = [

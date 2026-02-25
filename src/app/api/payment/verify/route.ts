@@ -1,46 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import crypto from "crypto";
 import { sendWhatsAppConfirmation } from "@/lib/whatsapp";
 import { sendEmailConfirmation } from "@/lib/email";
 import { createConsultationEvent } from "@/lib/google-calendar";
 import { parse, isValid } from "date-fns";
 
+const cashfreeAppId = process.env.CASHFREE_APP_ID;
+const cashfreeSecretKey = process.env.CASHFREE_SECRET_KEY;
+const CASHFREE_API_URL = "https://api.cashfree.com/pg/orders";
+
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { bookingId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
+        const { bookingId, orderId } = body;
 
         if (!bookingId) {
             return NextResponse.json({ error: "Missing booking ID" }, { status: 400 });
         }
 
-        // All three Razorpay fields are REQUIRED for payment verification
-        if (!razorpay_signature || !razorpay_order_id || !razorpay_payment_id) {
+        if (!orderId) {
             return NextResponse.json(
-                { error: "Missing payment verification fields" },
+                { error: "Missing order ID for payment verification" },
                 { status: 400 }
             );
         }
 
-        // Verify Razorpay signature
-        const secret = process.env.RAZORPAY_KEY_SECRET;
-        if (!secret) {
-            console.error("RAZORPAY_KEY_SECRET is not configured");
+        // Verify payment by fetching order status from Cashfree
+        if (!cashfreeAppId || !cashfreeSecretKey) {
+            console.error("CASHFREE_APP_ID or CASHFREE_SECRET_KEY is not configured");
             return NextResponse.json(
                 { error: "Payment verification is not configured" },
                 { status: 500 }
             );
         }
 
-        const expectedSignature = crypto
-            .createHmac("sha256", secret)
-            .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-            .digest("hex");
+        const cfResponse = await fetch(`${CASHFREE_API_URL}/${orderId}`, {
+            method: "GET",
+            headers: {
+                "x-client-id": cashfreeAppId,
+                "x-client-secret": cashfreeSecretKey,
+                "x-api-version": "2023-08-01",
+            },
+        });
 
-        if (expectedSignature !== razorpay_signature) {
+        const cfData = await cfResponse.json();
+
+        if (!cfResponse.ok || cfData.order_status !== "PAID") {
             return NextResponse.json(
-                { error: "Invalid payment signature" },
+                { error: "Payment not completed. Order status: " + (cfData.order_status || "unknown") },
                 { status: 400 }
             );
         }
@@ -50,7 +57,7 @@ export async function POST(request: NextRequest) {
             where: { id: bookingId },
             data: {
                 paymentStatus: "Paid",
-                razorpayPaymentId: razorpay_payment_id,
+                cashfreePaymentId: cfData.cf_order_id?.toString() || orderId,
             },
         });
 

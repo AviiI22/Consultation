@@ -26,7 +26,7 @@ async function trigger() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 bookingId: lastBooking.id,
-                // Skiping razorpay signature and IDs will skip signature check in the API
+                // Skipping Cashfree order ID will skip verification check in the API
             }),
         });
 

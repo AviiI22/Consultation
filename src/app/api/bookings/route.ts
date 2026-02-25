@@ -1,19 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import Razorpay from "razorpay";
 import { rateLimit } from "@/lib/rate-limit";
 
-const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
-const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET;
+const cashfreeAppId = process.env.CASHFREE_APP_ID;
+const cashfreeSecretKey = process.env.CASHFREE_SECRET_KEY;
+const CASHFREE_API_URL = "https://api.cashfree.com/pg/orders";
 
-if (!razorpayKeyId || !razorpayKeySecret) {
-    console.warn("WARNING: RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET not configured. Payment creation will fail.");
+if (!cashfreeAppId || !cashfreeSecretKey) {
+    console.warn("WARNING: CASHFREE_APP_ID or CASHFREE_SECRET_KEY not configured. Payment creation will fail.");
 }
-
-const razorpay = new Razorpay({
-    key_id: razorpayKeyId || "",
-    key_secret: razorpayKeySecret || "",
-});
 
 export async function POST(request: NextRequest) {
     // Rate limiting
@@ -63,6 +58,7 @@ export async function POST(request: NextRequest) {
                 { status: 400 }
             );
         }
+
         // Calculate discount using atomic operation to prevent race conditions
         let discountAmount = 0;
         let finalAmount = parseInt(amount);
@@ -141,37 +137,69 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Create Razorpay order
-        let razorpayOrderId = `order_demo_${booking.id.slice(0, 8)}`;
-        try {
-            const order = await razorpay.orders.create({
-                amount: finalAmount * 100, // Razorpay expects paise
-                currency: booking.currency,
-                receipt: booking.id,
-            });
-            razorpayOrderId = order.id;
+        // Create Cashfree order
+        let cashfreeOrderId = booking.id;
+        let paymentSessionId = "";
 
-            await prisma.booking.update({
-                where: { id: booking.id },
-                data: { razorpayOrderId: order.id },
+        try {
+            const customerPhone = phone.replace(/[^0-9]/g, "");
+            const formattedPhone = customerPhone.length >= 10 ? customerPhone.slice(-10) : customerPhone.padStart(10, '0');
+
+            const cfResponse = await fetch(CASHFREE_API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-client-id": cashfreeAppId || "",
+                    "x-client-secret": cashfreeSecretKey || "",
+                    "x-api-version": "2023-08-01",
+                },
+                body: JSON.stringify({
+                    order_id: booking.id,
+                    order_amount: finalAmount,
+                    order_currency: booking.currency,
+                    customer_details: {
+                        customer_id: booking.id,
+                        customer_name: name,
+                        customer_email: email,
+                        customer_phone: formattedPhone,
+                    },
+                    order_meta: {
+                        return_url: `${(request.headers.get("origin") || "https://localhost:3000").replace("http://", "https://")}/payment?order_id={order_id}`,
+                    },
+                }),
             });
-        } catch (rzpError) {
-            console.log("Razorpay order creation skipped (test mode):", rzpError);
-            await prisma.booking.update({
-                where: { id: booking.id },
-                data: { razorpayOrderId },
-            });
+
+            const cfData = await cfResponse.json();
+
+            if (cfResponse.ok && cfData.payment_session_id) {
+                cashfreeOrderId = cfData.order_id || booking.id;
+                paymentSessionId = cfData.payment_session_id;
+
+                await prisma.booking.update({
+                    where: { id: booking.id },
+                    data: { cashfreeOrderId },
+                });
+            } else {
+                console.error("Cashfree order creation failed:", cfData);
+                throw new Error(cfData.message || "Cashfree order creation failed");
+            }
+        } catch (cfError) {
+            console.error("Cashfree order creation error:", cfError);
+            throw cfError; // Re-throw to be caught by outer catch and return 500
         }
 
         return NextResponse.json({
             id: booking.id,
             amount: booking.amount,
-            razorpayOrderId,
+            cashfreeOrderId,
+            paymentSessionId,
         });
     } catch (error) {
         console.error("Booking creation error:", error);
+        console.error("Error details:", error instanceof Error ? error.message : String(error));
+        console.error("Error stack:", error instanceof Error ? error.stack : "no stack");
         return NextResponse.json(
-            { error: "Failed to create booking" },
+            { error: "Failed to create booking", details: error instanceof Error ? error.message : String(error) },
             { status: 500 }
         );
     }

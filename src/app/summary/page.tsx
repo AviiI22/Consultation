@@ -125,8 +125,9 @@ export default function SummaryPage() {
                 "bookingInfo",
                 JSON.stringify({
                     bookingId: data.id,
-                    orderId: data.razorpayOrderId,
+                    orderId: data.cashfreeOrderId,
                     amount: data.amount,
+                    paymentSessionId: data.paymentSessionId,
                 })
             );
 
