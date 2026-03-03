@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
@@ -116,7 +116,7 @@ function deriveClients(bookings: Booking[]): ClientData[] {
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export default function AdminDashboard() {
+function AdminDashboardInner() {
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState<"bookings" | "clients" | "packages">("bookings");
@@ -159,7 +159,7 @@ export default function AdminDashboard() {
         if (authResult === "success") {
             showToast("✅ Google Calendar connected! Google Meet will now be auto-created for new bookings.", "success");
             setGoogleConnected(true);
-            router.replace("/admin"); // Remove query params from URL
+            router.replace("/admin");
         } else if (authResult === "error") {
             const reason = searchParams.get("reason") || "unknown";
             showToast(`❌ Google Calendar connection failed (${reason}). Please try again.`, "error");
@@ -901,5 +901,14 @@ export default function AdminDashboard() {
                 </div>
             )}
         </div>
+    );
+}
+
+
+export default function AdminDashboard() {
+    return (
+        <Suspense fallback={null}>
+            <AdminDashboardInner />
+        </Suspense>
     );
 }
