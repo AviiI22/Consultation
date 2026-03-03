@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendWhatsAppConfirmation } from "@/lib/whatsapp";
 import { sendEmailConfirmation } from "@/lib/email";
-import { createConsultationEvent } from "@/lib/google-calendar";
-import { parse, isValid } from "date-fns";
+import { createConsultationEvent, parseBookingDateTime } from "@/lib/google-calendar";
 
 const cashfreeAppId = process.env.CASHFREE_APP_ID;
 const cashfreeSecretKey = process.env.CASHFREE_SECRET_KEY;
@@ -25,7 +23,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Verify payment by fetching order status from Cashfree
+        // ─── Step 1: Verify payment with Cashfree ─────────────────────────
         if (!cashfreeAppId || !cashfreeSecretKey) {
             console.error("CASHFREE_APP_ID or CASHFREE_SECRET_KEY is not configured");
             return NextResponse.json(
@@ -52,8 +50,8 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Update booking status
-        const booking = await prisma.booking.update({
+        // ─── Step 2: Update booking to Paid ───────────────────────────────
+        let booking = await prisma.booking.update({
             where: { id: bookingId },
             data: {
                 paymentStatus: "Paid",
@@ -61,37 +59,50 @@ export async function POST(request: NextRequest) {
             },
         });
 
-        // Send WhatsApp confirmation (non-blocking)
-        sendWhatsAppConfirmation(
-            {
-                bookingId: booking.id,
-                name: booking.name,
-                consultationType: booking.consultationType,
-                btrOption: booking.btrOption,
-                duration: booking.duration,
-                consultationDate: booking.consultationDate,
-                consultationTime: booking.consultationTime,
-                dob: booking.dob,
-                tob: booking.tob,
-                gender: booking.gender,
-                email: booking.email,
-                phone: booking.phone,
-                birthPlace: booking.birthPlace,
-                concern: booking.concern,
-                amount: booking.amount,
-                currency: booking.currency || "INR",
-            },
-            booking.phone
-        ).then((result) => {
-            if (result.success) {
-                console.log(`WhatsApp sent for booking ${booking.id}`);
-            } else {
-                console.warn(`WhatsApp failed for booking ${booking.id}:`, result.error);
-            }
-        });
+        // ─── Step 3: Create Google Meet Event (synchronous, before email) ──
+        let meetingLink = booking.meetingLink;
 
-        // Prepare data for email/notifications
-        const emailBookingData = {
+        if (!meetingLink) {
+            const dateObj = parseBookingDateTime(
+                booking.consultationDate,
+                booking.consultationTime
+            );
+
+            if (dateObj) {
+                try {
+                    const event = await createConsultationEvent({
+                        summary: `Astrology Consultation: ${booking.name}`,
+                        description: [
+                            `Client: ${booking.name}`,
+                            `Type: ${booking.consultationType} | BTR: ${booking.btrOption}`,
+                            `Duration: ${booking.duration} mins`,
+                            `Concern: ${booking.concern}`,
+                            `DOB: ${booking.dob} | TOB: ${booking.tob}`,
+                            `Birth Place: ${booking.birthPlace}`,
+                            `Email: ${booking.email} | Phone: ${booking.phone}`,
+                        ].join("\n"),
+                        startTime: dateObj,
+                        durationMinutes: booking.duration,
+                        attendeeEmail: booking.email,
+                        timezone: booking.userTimezone || "Asia/Kolkata",
+                    });
+
+                    if (event?.hangoutLink) {
+                        meetingLink = event.hangoutLink;
+                        booking = await prisma.booking.update({
+                            where: { id: booking.id },
+                            data: { meetingLink },
+                        });
+                        console.log(`✅ Google Meet created: ${meetingLink}`);
+                    }
+                } catch (meetErr) {
+                    console.error("⚠️ Failed to create Google Meet (non-fatal):", meetErr);
+                }
+            }
+        }
+
+        // ─── Step 4: Send Email Confirmation (with meeting link) ──────────
+        sendEmailConfirmation({
             bookingId: booking.id,
             name: booking.name,
             consultationType: booking.consultationType,
@@ -108,46 +119,20 @@ export async function POST(request: NextRequest) {
             concern: booking.concern,
             amount: booking.amount,
             currency: booking.currency || "INR",
-            meetingLink: booking.meetingLink,
-            userTimezone: booking.userTimezone || "UTC",
-        };
-
-        // Create Google Calendar Event (non-blocking — fire and forget)
-        const timePart = booking.consultationTime.split(" - ")[0];
-        const fullDateStr = `${booking.consultationDate} ${timePart}`;
-        const dateObj = parse(fullDateStr, "yyyy-MM-dd h:mm a", new Date());
-
-        if (isValid(dateObj)) {
-            createConsultationEvent({
-                summary: `Astrology Consultation: ${booking.name}`,
-                description: `Consultation Type: ${booking.consultationType}\nBTR Option: ${booking.btrOption}\nDuration: ${booking.duration} mins\nConcern: ${booking.concern}`,
-                startTime: dateObj,
-                durationMinutes: booking.duration,
-                attendeeEmail: booking.email,
-                timezone: booking.userTimezone || "UTC",
-            }).then(async (event) => {
-                if (event && event.hangoutLink) {
-                    console.log(`Calendar event created: ${event.hangoutLink}`);
-                    await prisma.booking.update({
-                        where: { id: booking.id },
-                        data: { meetingLink: event.hangoutLink },
-                    });
-                }
-            }).catch((err) => {
-                console.error("Failed to create calendar event:", err);
-            });
-        }
-
-        // Send email confirmation (non-blocking)
-        sendEmailConfirmation(emailBookingData).then((result) => {
+            meetingLink: meetingLink || null,
+            userTimezone: booking.userTimezone || "Asia/Kolkata",
+        }).then((result) => {
             if (result.success) {
-                console.log(`Email sent for booking ${booking.id}`);
+                console.log(`✅ Email sent for booking ${booking.id}`);
             } else {
-                console.warn(`Email failed for booking ${booking.id}:`, result.error);
+                console.warn(`⚠️ Email failed for booking ${booking.id}:`, result.error);
             }
         });
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({
+            success: true,
+            meetingLink: meetingLink || null,
+        });
     } catch (error) {
         console.error("Payment verification error:", error);
         return NextResponse.json(

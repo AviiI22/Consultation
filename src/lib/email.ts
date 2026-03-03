@@ -1,6 +1,17 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Gmail SMTP transporter
+// Uses Gmail App Password (NOT your regular Gmail password)
+// Setup: Google Account > Security > 2-Step Verification > App Passwords > Create
+function createTransporter() {
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD,
+    },
+  });
+}
 
 interface BookingDetails {
   bookingId: string;
@@ -36,8 +47,11 @@ function buildEmailHtml(booking: BookingDetails): string {
         <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Your astrology consultation has been booked</p>
         ${booking.meetingLink ? `
           <div style="margin-top: 20px;">
-            <a href="${booking.meetingLink}" style="display: inline-block; background: #fff; color: #A07B1A; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">Join Meeting</a>
+            <a href="${booking.meetingLink}" style="display: inline-block; background: #fff; color: #A07B1A; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.15);">
+              📹 Join Google Meet
+            </a>
           </div>
+          <p style="color: rgba(255,255,255,0.7); font-size: 12px; margin: 8px 0 0;">Click the button at your scheduled time to join</p>
         ` : ''}
       </div>
 
@@ -52,6 +66,15 @@ function buildEmailHtml(booking: BookingDetails): string {
           <p style="color: #888; font-size: 12px; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 1px;">Booking ID</p>
           <p style="color: #C9A227; font-size: 18px; font-weight: 700; margin: 0; font-family: monospace;">${booking.bookingId.slice(0, 12)}</p>
         </div>
+
+        ${booking.meetingLink ? `
+        <!-- Meeting Link Box -->
+        <div style="background: #EEF4FF; border: 1px solid #BFD4FF; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+          <p style="color: #2563EB; font-size: 13px; font-weight: 700; margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.5px;">🔗 Google Meet Link</p>
+          <a href="${booking.meetingLink}" style="color: #1D4ED8; font-size: 13px; word-break: break-all;">${booking.meetingLink}</a>
+          <p style="color: #64748B; font-size: 12px; margin: 6px 0 0;">Date: ${booking.consultationDate} &nbsp;|&nbsp; Time: ${booking.consultationTime} (${booking.userTimezone || 'IST'})</p>
+        </div>
+        ` : ''}
 
         <!-- Consultation Details -->
         <h3 style="color: #A07B1A; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin: 24px 0 12px; border-bottom: 1px solid #E8E4DB; padding-bottom: 8px;">📋 Consultation Details</h3>
@@ -104,20 +127,24 @@ function buildEmailHtml(booking: BookingDetails): string {
 export async function sendEmailConfirmation(
   booking: BookingDetails
 ): Promise<{ success: boolean; error?: string }> {
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+
+  if (!gmailUser || !gmailPass) {
+    console.warn("Email skipped: GMAIL_USER or GMAIL_APP_PASSWORD not set.");
+    return { success: false, error: "Email credentials not configured" };
+  }
+
   try {
-    const { data, error } = await resend.emails.send({
-      from: "Astrology Consultation <onboarding@resend.dev>",
+    const transporter = createTransporter();
+    const info = await transporter.sendMail({
+      from: `"Astrology Consultation" <${gmailUser}>`,
       to: booking.email,
       subject: `✦ Booking Confirmed — ${booking.consultationDate} at ${booking.consultationTime}`,
       html: buildEmailHtml(booking),
     });
 
-    if (error) {
-      console.error("Resend email error:", error);
-      return { success: false, error: error.message };
-    }
-
-    console.log(`Email sent: ${data?.id}`);
+    console.log(`✅ Email sent: ${info.messageId}`);
     return { success: true };
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : "Unknown error";
@@ -131,34 +158,40 @@ export async function sendBulkAnnouncement(
   subject: string,
   message: string
 ): Promise<{ success: boolean; error?: string }> {
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+
+  if (!gmailUser || !gmailPass) {
+    return { success: false, error: "Email credentials not configured" };
+  }
+
   try {
-    const { data, error } = await resend.emails.send({
-      from: "Astrology Consultation <onboarding@resend.dev>",
-      to: recipients,
-      subject: subject,
-      html: `
-        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #FAFAF7; border-radius: 12px; overflow: hidden; border: 1px solid #E8E4DB;">
-          <div style="background: #A07B1A; padding: 24px; text-align: center; color: #fff;">
-            <h1 style="margin: 0; font-size: 20px;">✦ Announcement ✦</h1>
+    const transporter = createTransporter();
+    // Send individually to avoid spam filters and BCC leaking
+    const promises = recipients.map((to) =>
+      transporter.sendMail({
+        from: `"Astrology Consultation" <${gmailUser}>`,
+        to,
+        subject,
+        html: `
+          <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #FAFAF7; border-radius: 12px; overflow: hidden; border: 1px solid #E8E4DB;">
+            <div style="background: #A07B1A; padding: 24px; text-align: center; color: #fff;">
+              <h1 style="margin: 0; font-size: 20px;">✦ Announcement ✦</h1>
+            </div>
+            <div style="padding: 32px 24px; color: #2D2A26; line-height: 1.6;">
+              ${message.replace(/\n/g, '<br/>')}
+            </div>
+            <div style="background: #F5F3EE; padding: 16px; text-align: center; font-size: 12px; color: #A8A290;">
+              © 2026 Astrology Consultation
+            </div>
           </div>
-          <div style="padding: 32px 24px; color: #2D2A26; line-height: 1.6;">
-            ${message.replace(/\n/g, '<br/>')}
-          </div>
-          <div style="background: #F5F3EE; padding: 16px; text-align: center; font-size: 12px; color: #A8A290;">
-            © 2026 Astrology Consultation
-          </div>
-        </div>
         `,
-    });
+      })
+    );
 
-    if (error) {
-      console.error("Resend bulk email error:", error);
-      return { success: false, error: error.message };
-    }
-
+    await Promise.allSettled(promises);
     return { success: true };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
   }
 }
-

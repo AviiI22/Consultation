@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
     Calendar,
@@ -23,6 +24,9 @@ import {
     Box,
     LayoutDashboard,
     Sparkles,
+    Video,
+    Wifi,
+    WifiOff,
 } from "lucide-react";
 
 interface ServicePackage {
@@ -131,6 +135,37 @@ export default function AdminDashboard() {
     const [announceModal, setAnnounceModal] = useState(false);
     const [announceSubject, setAnnounceSubject] = useState("");
     const [announceMessage, setAnnounceMessage] = useState("");
+    const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
+    const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+    const searchParams = useSearchParams();
+    const router = useRouter();
+
+    const showToast = useCallback((message: string, type: "success" | "error") => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 5000);
+    }, []);
+
+    // Check Google Auth status on mount
+    useEffect(() => {
+        fetch("/api/admin/google-auth/status")
+            .then((r) => r.json())
+            .then((d) => setGoogleConnected(d.connected))
+            .catch(() => setGoogleConnected(false));
+    }, []);
+
+    // Handle Google Auth callback result from URL params
+    useEffect(() => {
+        const authResult = searchParams.get("google_auth");
+        if (authResult === "success") {
+            showToast("✅ Google Calendar connected! Google Meet will now be auto-created for new bookings.", "success");
+            setGoogleConnected(true);
+            router.replace("/admin"); // Remove query params from URL
+        } else if (authResult === "error") {
+            const reason = searchParams.get("reason") || "unknown";
+            showToast(`❌ Google Calendar connection failed (${reason}). Please try again.`, "error");
+            router.replace("/admin");
+        }
+    }, [searchParams, showToast, router]);
 
     const fetchBookings = async () => {
         try {
@@ -184,12 +219,34 @@ export default function AdminDashboard() {
                 body: JSON.stringify({ bookingId: id }),
             });
             if (res.ok) {
-                alert("Follow-up email sent!");
+                showToast("Follow-up email sent!", "success");
             } else {
-                alert("Failed to send follow-up email.");
+                showToast("Failed to send follow-up email.", "error");
             }
         } catch {
-            alert("Error sending follow-up.");
+            showToast("Error sending follow-up.", "error");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const generateMeetLink = async (bookingId: string, notifyClient = true) => {
+        setActionLoading(`meet-${bookingId}`);
+        try {
+            const res = await fetch("/api/admin/bookings/generate-meet", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ bookingId, notifyClient }),
+            });
+            const data = await res.json();
+            if (res.ok && data.meetingLink) {
+                showToast("✅ Google Meet link generated" + (notifyClient ? " and client notified!" : "!"), "success");
+                await fetchBookings();
+            } else {
+                showToast(`❌ ${data.error || "Failed to generate meeting link"}`, "error");
+            }
+        } catch {
+            showToast("Error generating meeting link.", "error");
         } finally {
             setActionLoading(null);
         }
@@ -276,13 +333,22 @@ export default function AdminDashboard() {
                     <strong>📝 Notes:</strong> {b.adminNotes}
                 </div>
             )}
-            {b.meetingLink && (
-                <div className="text-xs text-blue-700 bg-blue-50 rounded-lg p-2 border border-blue-200">
-                    <strong>🔗 Meeting:</strong>{" "}
-                    <a href={b.meetingLink} target="_blank" rel="noopener noreferrer" className="underline">
+            {/* Meet Link */}
+            {b.meetingLink ? (
+                <div className="text-xs text-blue-700 bg-blue-50 rounded-lg p-2 border border-blue-200 flex items-center gap-2">
+                    <Video className="w-3 h-3 flex-shrink-0" />
+                    <strong>Google Meet:</strong>{" "}
+                    <a href={b.meetingLink} target="_blank" rel="noopener noreferrer" className="underline truncate">
                         {b.meetingLink}
                     </a>
                 </div>
+            ) : (
+                b.paymentStatus === "Paid" && googleConnected && (
+                    <div className="text-xs text-amber-700 bg-amber-50 rounded-lg p-2 border border-amber-200">
+                        <span className="font-medium">⚠️ No meeting link yet.</span>{" "}
+                        Click &ldquo;Generate Meet&rdquo; below to create one.
+                    </div>
+                )
             )}
 
             {/* Actions */}
@@ -323,6 +389,21 @@ export default function AdminDashboard() {
                 >
                     <Link2 className="w-3 h-3" /> Meeting Link
                 </button>
+                {/* Generate Meet button — shown when Google is connected and no link exists */}
+                {b.paymentStatus === "Paid" && googleConnected && (
+                    <button
+                        onClick={() => generateMeetLink(b.id, true)}
+                        disabled={actionLoading === `meet-${b.id}`}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                    >
+                        {actionLoading === `meet-${b.id}` ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                            <Video className="w-3 h-3" />
+                        )}
+                        {b.meetingLink ? "Regenerate Meet" : "Generate Meet"}
+                    </button>
+                )}
                 {b.status === "Completed" && (
                     <button
                         onClick={() => sendFollowUp(b.id)}
@@ -347,6 +428,17 @@ export default function AdminDashboard() {
 
     return (
         <div className="min-h-screen bg-cream-50 transition-colors duration-300">
+            {/* Toast Notification */}
+            {toast && (
+                <div
+                    className={`fixed top-5 right-5 z-[100] px-5 py-3 rounded-xl shadow-xl text-sm font-medium transition-all animate-in slide-in-from-top-2 max-w-sm ${toast.type === "success"
+                        ? "bg-emerald-600 text-white"
+                        : "bg-red-600 text-white"
+                        }`}
+                >
+                    {toast.message}
+                </div>
+            )}
             {/* Top Bar */}
             <header className="bg-white border-b border-cream-400/50 sticky top-0 z-30">
                 <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -389,6 +481,23 @@ export default function AdminDashboard() {
                     <div className="bg-white p-5 rounded-2xl border border-cream-400/50 shadow-sm">
                         <p className="text-xs font-semibold text-cream-600 uppercase mb-4">Quick Actions</p>
                         <div className="flex flex-wrap gap-2">
+                            {/* Google Calendar Status & Connect */}
+                            {googleConnected === false ? (
+                                <a
+                                    href="/api/admin/google-auth"
+                                    className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 shadow-sm flex items-center gap-2 transition-all"
+                                >
+                                    <Video className="w-4 h-4" /> Connect Google Calendar
+                                </a>
+                            ) : googleConnected === true ? (
+                                <div className="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-medium flex items-center gap-2">
+                                    <Wifi className="w-4 h-4" /> Google Meet: Connected
+                                </div>
+                            ) : (
+                                <div className="px-4 py-2 rounded-xl bg-gray-50 text-gray-400 border text-sm font-medium flex items-center gap-2">
+                                    <WifiOff className="w-4 h-4" /> Checking...
+                                </div>
+                            )}
                             <button
                                 onClick={async () => {
                                     setActionLoading("reminders");
@@ -397,9 +506,9 @@ export default function AdminDashboard() {
                                             method: "POST",
                                         });
                                         const data = await res.json();
-                                        alert(data.message || data.error);
+                                        showToast(data.message || data.error, data.message ? "success" : "error");
                                     } catch {
-                                        alert("Failed to run reminders.");
+                                        showToast("Failed to run reminders.", "error");
                                     } finally {
                                         setActionLoading(null);
                                     }
@@ -671,7 +780,10 @@ export default function AdminDashboard() {
                         <div className="flex gap-2 mt-6">
                             <button
                                 onClick={async () => {
-                                    if (!announceSubject || !announceMessage) return alert("Please fill details");
+                                    if (!announceSubject || !announceMessage) {
+                                        showToast("Please fill in subject and message.", "error");
+                                        return;
+                                    }
                                     setActionLoading("announcement");
                                     try {
                                         const res = await fetch("/api/admin/announcements/send", {
@@ -680,10 +792,10 @@ export default function AdminDashboard() {
                                             body: JSON.stringify({ subject: announceSubject, message: announceMessage }),
                                         });
                                         const data = await res.json();
-                                        alert(data.message || data.error);
+                                        showToast(data.message || data.error, res.ok ? "success" : "error");
                                         if (res.ok) setAnnounceModal(false);
                                     } catch {
-                                        alert("Failed to send.");
+                                        showToast("Failed to send.", "error");
                                     } finally {
                                         setActionLoading(null);
                                     }
@@ -742,7 +854,10 @@ export default function AdminDashboard() {
                         <div className="flex gap-2 mt-6">
                             <button
                                 onClick={async () => {
-                                    if (!pkgName || !pkgSessions || !pkgPrice) return alert("Please fill all fields");
+                                    if (!pkgName || !pkgSessions || !pkgPrice) {
+                                        showToast("Please fill all fields.", "error");
+                                        return;
+                                    }
                                     setActionLoading("createPkg");
                                     try {
                                         const res = await fetch("/api/admin/packages", {
@@ -759,12 +874,13 @@ export default function AdminDashboard() {
                                             await fetchPackages();
                                             setPackageModal(false);
                                             setPkgName(""); setPkgDesc(""); setPkgSessions(""); setPkgPrice("");
+                                            showToast("Package created!", "success");
                                         } else {
                                             const data = await res.json();
-                                            alert(data.error || "Failed to create package");
+                                            showToast(data.error || "Failed to create package", "error");
                                         }
                                     } catch {
-                                        alert("Failed to create package");
+                                        showToast("Failed to create package", "error");
                                     } finally {
                                         setActionLoading(null);
                                     }

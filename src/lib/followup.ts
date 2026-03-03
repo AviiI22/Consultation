@@ -1,6 +1,4 @@
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import nodemailer from "nodemailer";
 
 interface FollowUpData {
     name: string;
@@ -10,9 +8,22 @@ interface FollowUpData {
 }
 
 export async function sendFollowUpEmail(data: FollowUpData) {
+    const gmailUser = process.env.GMAIL_USER;
+    const gmailPass = process.env.GMAIL_APP_PASSWORD;
+
+    if (!gmailUser || !gmailPass) {
+        console.warn("Follow-up email skipped: GMAIL_USER or GMAIL_APP_PASSWORD not set.");
+        return { success: false, error: "Email credentials not configured" };
+    }
+
     try {
-        const result = await resend.emails.send({
-            from: "Astrology Consultation <onboarding@resend.dev>",
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: { user: gmailUser, pass: gmailPass },
+        });
+
+        const info = await transporter.sendMail({
+            from: `"Astrology Consultation" <${gmailUser}>`,
             to: data.email,
             subject: "Thank you for your consultation! ✦",
             html: `
@@ -57,7 +68,7 @@ export async function sendFollowUpEmail(data: FollowUpData) {
             `,
         });
 
-        return { success: true, id: result.data?.id };
+        return { success: true, id: info.messageId };
     } catch (error) {
         console.error("Follow-up email error:", error);
         return { success: false, error };
