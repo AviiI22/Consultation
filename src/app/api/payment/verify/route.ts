@@ -135,6 +135,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             success: true,
             meetingLink: meetingLink || null,
+            bookingId: booking.id,
         });
     } catch (error) {
         console.error("Payment verification error:", error);

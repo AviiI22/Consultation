@@ -35,6 +35,10 @@ model Booking {
   currency          String   @default("INR")
   promoCode         String?
   discountAmount    Int      @default(0)
+  referralCode      String?            // referral/affiliate tracking
+  utmSource         String?            // traffic source (UTM params)
+  refundStatus      String?            // null | Pending | Issued | N/A
+  refundAmount      Int?               // refund amount if applicable
   createdAt         DateTime @default(now())
 }
 

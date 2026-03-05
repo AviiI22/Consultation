@@ -9,7 +9,7 @@ import BookingLayout from "@/components/BookingLayout";
 import { Duration } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Clock, Calendar, Ban, Loader2, AlertTriangle } from "lucide-react";
-import { format, addDays } from "date-fns";
+import { format, addDays, startOfMonth, getDaysInMonth, getDay, isSameMonth, addMonths, subMonths } from "date-fns";
 
 const durations: { value: Duration; label: string }[] = [
     { value: 40, label: "40 Minutes" },
@@ -26,22 +26,115 @@ interface BookedSlot {
     time: string;
 }
 
-function generateDates(blockedDates: string[]): { value: string; label: string; dayOfWeek: number }[] {
-    const dates: { value: string; label: string; dayOfWeek: number }[] = [];
+function generateAvailableDates(blockedDates: string[]): Set<string> {
+    const available = new Set<string>();
     const today = new Date();
     const blocked = new Set(blockedDates);
-    for (let i = 1; i <= 30; i++) {
+    for (let i = 1; i <= 60; i++) {
         const date = addDays(today, i);
         const val = format(date, "yyyy-MM-dd");
-        if (!blocked.has(val)) {
-            dates.push({
-                value: val,
-                label: format(date, "EEE, MMM dd, yyyy"),
-                dayOfWeek: date.getDay(),
-            });
-        }
+        if (!blocked.has(val)) available.add(val);
     }
-    return dates;
+    return available;
+}
+
+function CalendarPicker({
+    availableDates,
+    blockedDates,
+    bookedSlots,
+    availSlots,
+    selected,
+    onSelect,
+}: {
+    availableDates: Set<string>;
+    blockedDates: string[];
+    bookedSlots: BookedSlot[];
+    availSlots: AvailSlot[];
+    selected: string;
+    onSelect: (d: string) => void;
+}) {
+    const [viewMonth, setViewMonth] = useState(() => startOfMonth(addDays(new Date(), 1)));
+    const today = new Date();
+    const blocked = new Set(blockedDates);
+
+    const daysInMonth = getDaysInMonth(viewMonth);
+    const firstDow = getDay(startOfMonth(viewMonth)); // 0=Sun
+    const dayNames = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+    const isAllBooked = (dateStr: string) => {
+        const dow = new Date(dateStr).getDay();
+        const slots = availSlots.filter((s) => s.dayOfWeek === dow);
+        return slots.length > 0 && slots.every((s) => bookedSlots.some((b) => b.date === dateStr && b.time === s.timeSlot));
+    };
+
+    const getDayStatus = (dateStr: string): "available" | "blocked" | "booked" | "unavailable" | "past" => {
+        const d = new Date(dateStr);
+        if (d <= today) return "past";
+        if (blocked.has(dateStr)) return "blocked";
+        if (!availableDates.has(dateStr)) return "unavailable";
+        if (isAllBooked(dateStr)) return "booked";
+        return "available";
+    };
+
+    return (
+        <div className="rounded-2xl border-2 border-cream-400/50 bg-white overflow-hidden">
+            {/* Month Header */}
+            <div className="flex items-center justify-between px-4 py-3 bg-gold-50 border-b border-cream-200">
+                <button onClick={() => setViewMonth(subMonths(viewMonth, 1))} className="w-8 h-8 rounded-lg hover:bg-gold-100 flex items-center justify-center text-gold-600 font-bold transition-colors">&lt;</button>
+                <span className="font-serif font-semibold text-gray-800">{format(viewMonth, "MMMM yyyy")}</span>
+                <button onClick={() => setViewMonth(addMonths(viewMonth, 1))} className="w-8 h-8 rounded-lg hover:bg-gold-100 flex items-center justify-center text-gold-600 font-bold transition-colors">&gt;</button>
+            </div>
+
+            {/* Day Names */}
+            <div className="grid grid-cols-7 border-b border-cream-100">
+                {dayNames.map((d) => (
+                    <div key={d} className="text-center text-xs font-semibold text-cream-500 py-2">{d}</div>
+                ))}
+            </div>
+
+            {/* Days Grid */}
+            <div className="grid grid-cols-7 p-2 gap-1">
+                {Array.from({ length: firstDow }).map((_, i) => <div key={`empty-${i}`} />)}
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const day = i + 1;
+                    const date = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day);
+                    const dateStr = format(date, "yyyy-MM-dd");
+                    const status = getDayStatus(dateStr);
+                    const isSelected = selected === dateStr;
+                    const isThisMonth = isSameMonth(date, viewMonth);
+
+                    return (
+                        <button
+                            key={day}
+                            onClick={() => status === "available" && onSelect(dateStr)}
+                            disabled={status !== "available"}
+                            title={status === "booked" ? "Fully booked" : status === "blocked" ? "Not available" : undefined}
+                            className={cn(
+                                "relative w-full aspect-square rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center",
+                                !isThisMonth && "opacity-30",
+                                status === "past" && "text-gray-300 cursor-default",
+                                status === "unavailable" && "text-gray-300 cursor-default",
+                                status === "blocked" && "text-red-300 cursor-not-allowed line-through",
+                                status === "booked" && "text-amber-300 cursor-not-allowed",
+                                status === "available" && !isSelected && "text-gray-700 hover:bg-gold-50 hover:text-gold-700 hover:border-gold-300 border border-transparent cursor-pointer",
+                                isSelected && "bg-gold-500 text-white shadow-md shadow-gold-500/30 border border-gold-400",
+                            )}
+                        >
+                            {day}
+                            {status === "booked" && <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-amber-400" />}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Legend */}
+            <div className="flex items-center justify-center gap-4 px-4 py-2 border-t border-cream-100 text-[10px] text-gray-400">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-gold-400" />Available</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-200" />Fully Booked</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-gray-200" />Unavailable</span>
+            </div>
+        </div>
+    );
 }
 
 export default function SchedulePage() {
@@ -71,10 +164,11 @@ export default function SchedulePage() {
             .finally(() => setLoading(false));
     }, []);
 
-    const dates = generateDates(blockedDates);
+    const availableDates = generateAvailableDates(blockedDates);
 
     // Get the selected date's day of week
-    const selectedDayOfWeek = dates.find((d) => d.value === selectedDate)?.dayOfWeek;
+    const selectedDayOfWeek =
+        selectedDate ? new Date(selectedDate + "T00:00:00").getDay() : undefined;
 
     // Filter time slots for the selected day
     const timeSlotsForDate =
@@ -188,24 +282,21 @@ export default function SchedulePage() {
                         </div>
                     </div>
 
-                    {/* Date */}
+                    {/* Date — Calendar Picker */}
                     <div>
                         <label className="flex items-center gap-2 text-sm font-medium text-gray-600 mb-3">
                             <Calendar className="w-4 h-4 text-gold-600" />
                             Consultation Date
+                            {selectedDate && <span className="ml-auto text-gold-600 font-semibold text-xs">{format(new Date(selectedDate + "T00:00:00"), "EEE, MMM dd, yyyy")}</span>}
                         </label>
-                        <select
-                            value={selectedDate}
-                            onChange={(e) => handleDateChange(e.target.value)}
-                            className="w-full p-3 rounded-xl bg-cream-50 border-2 border-cream-400/60 text-gray-800 focus:border-gold-500 focus:outline-none transition-colors duration-300 appearance-none cursor-pointer"
-                        >
-                            <option value="">Select a date...</option>
-                            {dates.map((d) => (
-                                <option key={d.value} value={d.value}>
-                                    {d.label}
-                                </option>
-                            ))}
-                        </select>
+                        <CalendarPicker
+                            availableDates={availableDates}
+                            blockedDates={blockedDates}
+                            bookedSlots={bookedSlots}
+                            availSlots={availSlots}
+                            selected={selectedDate}
+                            onSelect={handleDateChange}
+                        />
                     </div>
 
                     {/* Time Slot */}

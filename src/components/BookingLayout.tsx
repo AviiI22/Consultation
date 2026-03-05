@@ -19,9 +19,6 @@ export default function BookingLayout({
                     <Link href="/" className="font-serif text-2xl sm:text-3xl text-gold-gradient tracking-wide">
                         ✦ Astrology Consultation ✦
                     </Link>
-                    <p className="text-cream-700 text-xs mt-1 tracking-widest uppercase">
-                        Discover Your Cosmic Path
-                    </p>
                 </header>
 
                 {/* Content */}

@@ -62,7 +62,6 @@ export async function sendFollowUpEmail(data: FollowUpData) {
 
                     <div style="text-align: center; margin-top: 30px; color: #A8A290; font-size: 12px;">
                         <p>✦ Astrology Consultation ✦</p>
-                        <p>Discover Your Cosmic Path</p>
                     </div>
                 </div>
             `,

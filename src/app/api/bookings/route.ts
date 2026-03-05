@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
             discountPercent,
             userTimezone,
             currency,
+            utmSource,
         } = body;
 
         // Validate required fields
@@ -121,6 +122,7 @@ export async function POST(request: NextRequest) {
                     status: "Upcoming",
                     userTimezone: userTimezone || "UTC",
                     currency: currency || "INR",
+                    utmSource: utmSource || null,
                 },
             });
         }).catch((err) => {

@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+    if (!rateLimit(ip, 10, 60000)) {
+        return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
+    }
     try {
         const { code } = await request.json();
 

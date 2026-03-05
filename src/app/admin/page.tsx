@@ -64,6 +64,8 @@ interface Booking {
     adminTimezone: string;
     currency: string;
     createdAt: string;
+    utmSource: string | null;
+    refundStatus: string | null;
 }
 
 interface ClientData {
@@ -137,6 +139,8 @@ function AdminDashboardInner() {
     const [announceMessage, setAnnounceMessage] = useState("");
     const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
     const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+    const [bookingSearch, setBookingSearch] = useState("");
+    const [bookingStatusFilter, setBookingStatusFilter] = useState<"all" | "Upcoming" | "Completed" | "Cancelled">("all");
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -268,6 +272,18 @@ function AdminDashboardInner() {
             c.email.toLowerCase().includes(clientSearch.toLowerCase()) ||
             c.phone.includes(clientSearch)
     );
+
+    // Booking search/filter
+    const filteredBookings = paid.filter((b) => {
+        const q = bookingSearch.toLowerCase();
+        const matchesSearch = !q || b.name.toLowerCase().includes(q) || b.email.toLowerCase().includes(q) || b.id.toLowerCase().includes(q) || b.phone.includes(q);
+        const matchesStatus = bookingStatusFilter === "all" || b.status === bookingStatusFilter;
+        return matchesSearch && matchesStatus;
+    });
+    const filteredUpcoming = filteredBookings.filter((b) => b.consultationDate >= today && b.status === "Upcoming");
+    const filteredCompleted = filteredBookings.filter((b) => b.status === "Completed");
+    const filteredCancelled = filteredBookings.filter((b) => b.status === "Cancelled");
+    const filteredPast = filteredBookings.filter((b) => b.consultationDate < today && b.status === "Upcoming");
 
     const statusColor = (s: string) => {
         if (s === "Completed") return "bg-green-100 text-green-700 border-green-200";
@@ -520,6 +536,25 @@ function AdminDashboardInner() {
                             </button>
                             <button
                                 onClick={async () => {
+                                    setActionLoading("cleanup");
+                                    try {
+                                        const res = await fetch("/api/admin/cleanup-pending", { method: "POST" });
+                                        const data = await res.json();
+                                        showToast(data.message || data.error, res.ok ? "success" : "error");
+                                        if (res.ok) await fetchBookings();
+                                    } catch {
+                                        showToast("Cleanup failed.", "error");
+                                    } finally {
+                                        setActionLoading(null);
+                                    }
+                                }}
+                                disabled={actionLoading === "cleanup"}
+                                className="px-4 py-2 rounded-xl bg-red-50 text-red-700 border border-red-200 text-sm font-medium hover:bg-red-100 transition-all flex items-center gap-2 disabled:opacity-50"
+                            >
+                                <XCircle className="w-4 h-4" /> {actionLoading === "cleanup" ? "Cleaning..." : "Cleanup &amp; Auto-complete"}
+                            </button>
+                            <button
+                                onClick={async () => {
                                     window.location.href = "/api/admin/export?type=bookings";
                                 }}
                                 className="px-4 py-2 rounded-xl bg-cream-100 text-cream-700 text-sm font-medium hover:bg-cream-200 transition-all flex items-center gap-2"
@@ -562,41 +597,68 @@ function AdminDashboardInner() {
 
                 {/* Bookings Tab */}
                 {tab === "bookings" && (
-                    <div className="space-y-8">
-                        {upcoming.length > 0 && (
-                            <section>
-                                <h2 className="text-lg font-serif text-gray-800 mb-3 flex items-center gap-2">
-                                    <Calendar className="w-5 h-5 text-gold-600" /> Upcoming ({upcoming.length})
-                                </h2>
-                                <div className="space-y-3">{upcoming.map((b) => renderBookingCard(b))}</div>
-                            </section>
-                        )}
-                        {past.length > 0 && (
-                            <section>
-                                <h2 className="text-lg font-serif text-gray-800 mb-3">⏰ Needs Action ({past.length})</h2>
-                                <p className="text-xs text-gray-500 mb-3">Past bookings still marked as Upcoming. Mark them as Completed or Cancelled.</p>
-                                <div className="space-y-3">{past.map((b) => renderBookingCard(b))}</div>
-                            </section>
-                        )}
-                        {completed.length > 0 && (
-                            <section>
-                                <h2 className="text-lg font-serif text-gray-800 mb-3 flex items-center gap-2">
-                                    <CheckCircle2 className="w-5 h-5 text-green-600" /> Completed ({completed.length})
-                                </h2>
-                                <div className="space-y-3">{completed.map((b) => renderBookingCard(b, true))}</div>
-                            </section>
-                        )}
-                        {cancelled.length > 0 && (
-                            <section>
-                                <h2 className="text-lg font-serif text-gray-800 mb-3 flex items-center gap-2">
-                                    <XCircle className="w-5 h-5 text-red-600" /> Cancelled ({cancelled.length})
-                                </h2>
-                                <div className="space-y-3">{cancelled.map((b) => renderBookingCard(b, true))}</div>
-                            </section>
-                        )}
-                        {bookings.length === 0 && (
-                            <div className="text-center py-12 text-cream-600">No bookings yet.</div>
-                        )}
+                    <div className="space-y-5">
+                        {/* Search + Filter */}
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cream-500" />
+                                <input
+                                    type="text"
+                                    placeholder="Search by name, email, phone, ID..."
+                                    value={bookingSearch}
+                                    onChange={(e) => setBookingSearch(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-cream-400/50 text-sm text-gray-800 placeholder-cream-400 focus:outline-none focus:border-gold-500"
+                                />
+                            </div>
+                            <select
+                                value={bookingStatusFilter}
+                                onChange={(e) => setBookingStatusFilter(e.target.value as typeof bookingStatusFilter)}
+                                className="px-4 py-2.5 rounded-xl bg-white border border-cream-400/50 text-sm text-gray-700 focus:outline-none focus:border-gold-500"
+                            >
+                                <option value="all">All Statuses</option>
+                                <option value="Upcoming">Upcoming</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <div className="space-y-8">
+                            {filteredUpcoming.length > 0 && (
+                                <section>
+                                    <h2 className="text-lg font-serif text-gray-800 mb-3 flex items-center gap-2">
+                                        <Calendar className="w-5 h-5 text-gold-600" /> Upcoming ({filteredUpcoming.length})
+                                    </h2>
+                                    <div className="space-y-3">{filteredUpcoming.map((b) => renderBookingCard(b))}</div>
+                                </section>
+                            )}
+                            {filteredPast.length > 0 && (
+                                <section>
+                                    <h2 className="text-lg font-serif text-gray-800 mb-3">⏰ Needs Action ({filteredPast.length})</h2>
+                                    <p className="text-xs text-gray-500 mb-3">Past bookings still marked as Upcoming. Click &ldquo;Cleanup &amp; Auto-complete&rdquo; in Quick Actions to handle them automatically.</p>
+                                    <div className="space-y-3">{filteredPast.map((b) => renderBookingCard(b))}</div>
+                                </section>
+                            )}
+                            {filteredCompleted.length > 0 && (
+                                <section>
+                                    <h2 className="text-lg font-serif text-gray-800 mb-3 flex items-center gap-2">
+                                        <CheckCircle2 className="w-5 h-5 text-green-600" /> Completed ({filteredCompleted.length})
+                                    </h2>
+                                    <div className="space-y-3">{filteredCompleted.map((b) => renderBookingCard(b, true))}</div>
+                                </section>
+                            )}
+                            {filteredCancelled.length > 0 && (
+                                <section>
+                                    <h2 className="text-lg font-serif text-gray-800 mb-3 flex items-center gap-2">
+                                        <XCircle className="w-5 h-5 text-red-600" /> Cancelled ({filteredCancelled.length})
+                                    </h2>
+                                    <div className="space-y-3">{filteredCancelled.map((b) => renderBookingCard(b, true))}</div>
+                                </section>
+                            )}
+                            {filteredBookings.length === 0 && (
+                                <div className="text-center py-12 text-cream-600">
+                                    {bookingSearch || bookingStatusFilter !== "all" ? "No bookings match your search." : "No bookings yet."}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 

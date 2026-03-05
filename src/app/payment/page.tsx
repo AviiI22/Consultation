@@ -54,6 +54,7 @@ function PaymentContent() {
                     JSON.stringify({
                         bookingId,
                         amount: amount,
+                        meetingLink: data.meetingLink || null,
                     })
                 );
                 sessionStorage.removeItem("bookingInfo");
