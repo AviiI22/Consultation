@@ -262,7 +262,7 @@ export default function SchedulePage() {
                             <Clock className="w-4 h-4 text-gold-600" />
                             Session Duration
                         </label>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {durations.map((d) => (
                                 <button
                                     key={d.value}

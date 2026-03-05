@@ -73,25 +73,25 @@ export default function LandingPage() {
                 {/* Resume Booking Banner */}
                 <ResumeBookingBanner />
 
-                <div className="relative text-center px-4 py-24">
-                    <p className="text-sm sm:text-base text-gold-600 font-medium tracking-[0.3em] uppercase mb-6">
+                <div className="relative text-center px-4 py-16 sm:py-24">
+                    <p className="text-xs sm:text-sm md:text-base text-gold-600 font-medium tracking-[0.3em] uppercase mb-4 sm:mb-6">
                         Vedic Astrology
                     </p>
 
-                    <h1 className="text-5xl sm:text-7xl lg:text-8xl font-bold text-gold-gradient leading-tight mb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                    <h1 className="text-4xl sm:text-6xl lg:text-8xl font-bold text-gold-gradient leading-tight mb-3 sm:mb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
                         Sanskar Dixit
                     </h1>
 
-                    <p className="text-lg sm:text-xl font-serif text-gray-500 italic mb-12">
+                    <p className="text-base sm:text-lg md:text-xl font-serif text-gray-500 italic mb-8 sm:mb-12">
                         &ldquo;Experience true jyotish&rdquo;
                     </p>
 
                     <Link
                         href="/book"
-                        className="group inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-gold-500 hover:bg-gold-400 text-white font-semibold text-lg transition-all duration-300 hover:shadow-xl hover:shadow-gold-500/30 active:scale-[0.98]"
+                        className="group inline-flex items-center gap-2 px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-gold-500 hover:bg-gold-400 text-white font-semibold text-base sm:text-lg transition-all duration-300 hover:shadow-xl hover:shadow-gold-500/30 active:scale-[0.98]"
                     >
                         Book a Consultation
-                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                        <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
                     </Link>
 
                     <div className="mt-4">

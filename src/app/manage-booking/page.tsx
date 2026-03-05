@@ -85,13 +85,13 @@ export default function ManageBookingPage() {
     return (
         <div className="min-h-screen bg-cream-100">
             <header className="sticky top-0 z-30 bg-cream-100/80 backdrop-blur-xl border-b border-cream-300/50">
-                <div className="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
+                <div className="max-w-xl mx-auto px-4 h-auto min-h-14 flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-3 sm:py-0">
                     <Link href="/" className="font-serif text-lg text-gold-gradient tracking-wide">✦ Astrology Consultation</Link>
-                    <Link href="/book" className="px-5 py-2 rounded-xl bg-gold-500 hover:bg-gold-400 text-white text-sm font-semibold transition-all">Book Now</Link>
+                    <Link href="/book" className="px-5 py-2 rounded-xl bg-gold-500 hover:bg-gold-400 text-white text-sm font-semibold transition-all text-center">Book Now</Link>
                 </div>
             </header>
 
-            <div className="max-w-xl mx-auto px-4 py-10">
+            <div className="max-w-xl mx-auto px-4 py-8">
                 <Link href="/" className="inline-flex items-center gap-1 text-sm text-cream-600 hover:text-gold-600 mb-6 transition-colors">
                     <ArrowLeft className="w-4 h-4" /> Back
                 </Link>

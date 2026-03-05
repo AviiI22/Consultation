@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Booking ID and email are required" }, { status: 400 });
     }
 
-    const booking = await prisma.booking.findFirst({
+    let booking = await prisma.booking.findFirst({
         where: { id: bookingId, email: { equals: email, mode: "insensitive" } },
         select: {
             id: true,
@@ -41,6 +41,34 @@ export async function GET(request: NextRequest) {
             createdAt: true,
         },
     });
+
+    // Fallback: support partial/prefix ID (e.g. first 8 chars shown on old confirmation pages)
+    if (!booking && bookingId.length >= 8) {
+        booking = await prisma.booking.findFirst({
+            where: {
+                id: { startsWith: bookingId },
+                email: { equals: email, mode: "insensitive" },
+            },
+            select: {
+                id: true,
+                consultationType: true,
+                btrOption: true,
+                duration: true,
+                consultationDate: true,
+                consultationTime: true,
+                name: true,
+                email: true,
+                phone: true,
+                amount: true,
+                currency: true,
+                paymentStatus: true,
+                status: true,
+                meetingLink: true,
+                userTimezone: true,
+                createdAt: true,
+            },
+        });
+    }
 
     if (!booking) {
         return NextResponse.json({ error: "Booking not found. Check your Booking ID and email." }, { status: 404 });

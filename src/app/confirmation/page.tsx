@@ -214,11 +214,20 @@ export default function ConfirmationPage() {
                     {/* Booking details */}
                     <div className="rounded-xl bg-cream-100 border border-cream-400/50 p-6 space-y-4 text-left">
                         {confirmationInfo && (
-                            <div className="flex items-center justify-between pb-3 border-b border-cream-300/60">
-                                <span className="text-gray-500 text-sm">Booking ID</span>
-                                <span className="text-gold-700 font-mono text-sm">
-                                    {confirmationInfo.bookingId.slice(0, 12)}...
+                            <div className="pb-3 border-b border-cream-300/60">
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="text-gray-500 text-sm">Booking ID</span>
+                                    <button
+                                        onClick={() => navigator.clipboard.writeText(confirmationInfo.bookingId)}
+                                        className="text-xs text-gold-600 hover:text-gold-500 underline underline-offset-2 transition-colors"
+                                    >
+                                        Copy
+                                    </button>
+                                </div>
+                                <span className="text-gold-700 font-mono text-xs break-all select-all">
+                                    {confirmationInfo.bookingId}
                                 </span>
+                                <p className="text-[10px] text-gray-400 mt-0.5">Save this — you'll need it for Manage Booking</p>
                             </div>
                         )}
 

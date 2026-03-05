@@ -9,13 +9,13 @@ interface StepperProps {
 
 export default function Stepper({ currentStep }: StepperProps) {
     return (
-        <div className="w-full max-w-3xl mx-auto px-4 py-6">
+        <div className="w-full max-w-3xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
             <div className="flex items-center justify-between relative">
                 {/* Progress line background */}
-                <div className="absolute top-5 left-0 right-0 h-0.5 bg-cream-400" />
+                <div className="absolute top-4 sm:top-5 left-0 right-0 h-0.5 bg-cream-400" />
                 {/* Progress line filled */}
                 <div
-                    className="absolute top-5 left-0 h-0.5 bg-gradient-to-r from-gold-500 to-gold-400 transition-all duration-700 ease-out"
+                    className="absolute top-4 sm:top-5 left-0 h-0.5 bg-gradient-to-r from-gold-500 to-gold-400 transition-all duration-700 ease-out"
                     style={{
                         width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%`,
                     }}
@@ -25,7 +25,7 @@ export default function Stepper({ currentStep }: StepperProps) {
                     <div key={step.number} className="flex flex-col items-center relative z-10">
                         <div
                             className={cn(
-                                "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-500 border-2",
+                                "w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all duration-500 border-2",
                                 step.number < currentStep
                                     ? "bg-gold-500 border-gold-500 text-white shadow-md shadow-gold-500/20"
                                     : step.number === currentStep
@@ -34,7 +34,7 @@ export default function Stepper({ currentStep }: StepperProps) {
                             )}
                         >
                             {step.number < currentStep ? (
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="w-3.5 h-3.5 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                                 </svg>
                             ) : (
@@ -43,7 +43,7 @@ export default function Stepper({ currentStep }: StepperProps) {
                         </div>
                         <span
                             className={cn(
-                                "mt-2 text-xs font-medium transition-colors duration-300 hidden sm:block",
+                                "mt-1.5 text-[10px] sm:text-xs font-medium transition-colors duration-300 hidden sm:block",
                                 step.number <= currentStep ? "text-gold-600" : "text-cream-600"
                             )}
                         >

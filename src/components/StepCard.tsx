@@ -22,14 +22,14 @@ export default function StepCard({ children, title, subtitle, className }: StepC
                 {/* Gold accent line at top */}
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-gold-shimmer bg-[length:200%_100%] animate-shimmer" />
 
-                <div className="p-8 sm:p-10">
-                    <h2 className="font-serif text-2xl sm:text-3xl text-gold-700 mb-2">
+                <div className="p-5 sm:p-8 md:p-10">
+                    <h2 className="font-serif text-xl sm:text-2xl md:text-3xl text-gold-700 mb-2">
                         {title}
                     </h2>
                     {subtitle && (
-                        <p className="text-cream-700 text-sm mb-8">{subtitle}</p>
+                        <p className="text-cream-700 text-xs sm:text-sm mb-6 sm:mb-8">{subtitle}</p>
                     )}
-                    {!subtitle && <div className="mb-8" />}
+                    {!subtitle && <div className="mb-6 sm:mb-8" />}
                     {children}
                 </div>
             </div>
