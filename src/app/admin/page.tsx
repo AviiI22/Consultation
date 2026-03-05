@@ -316,8 +316,23 @@ function AdminDashboardInner() {
                 </div>
             </div>
 
+            {/* Booking ID */}
+            <div className="flex items-center gap-2 text-xs text-gray-500 bg-cream-50 p-2 rounded-lg border border-cream-200">
+                <strong className="text-gray-600">Booking ID:</strong>
+                <span className="font-mono text-[10px] sm:text-xs select-all text-gold-700">{b.id}</span>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(b.id);
+                    }}
+                    className="ml-auto text-gold-600 hover:text-gold-500 underline underline-offset-2 transition-colors shrink-0"
+                >
+                    Copy
+                </button>
+            </div>
+
             {/* Details grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs text-gray-600">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs text-gray-600 mt-3">
                 <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-gold-500" />{b.consultationDate}</span>
                 <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-gold-500" />{b.consultationTime}</span>
                 <span className="flex items-center gap-1"><CreditCard className="w-3 h-3 text-gold-500" />{b.duration} min • {b.consultationType}</span>
