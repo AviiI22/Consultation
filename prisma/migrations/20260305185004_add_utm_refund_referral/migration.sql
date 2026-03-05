@@ -1,5 +1,8 @@
+-- Full schema creation + the 4 new columns, all in one safe migration.
+-- This is the canonical migration for a fresh database deployment.
+
 -- CreateTable
-CREATE TABLE "Booking" (
+CREATE TABLE IF NOT EXISTS "Booking" (
     "id" TEXT NOT NULL,
     "consultationType" TEXT NOT NULL,
     "btrOption" TEXT NOT NULL,
@@ -26,7 +29,6 @@ CREATE TABLE "Booking" (
     "currency" TEXT NOT NULL DEFAULT 'INR',
     "promoCode" TEXT,
     "discountAmount" INTEGER NOT NULL DEFAULT 0,
-    "referralCode" TEXT,
     "utmSource" TEXT,
     "refundStatus" TEXT,
     "refundAmount" INTEGER,
@@ -36,7 +38,7 @@ CREATE TABLE "Booking" (
 );
 
 -- CreateTable
-CREATE TABLE "Availability" (
+CREATE TABLE IF NOT EXISTS "Availability" (
     "id" TEXT NOT NULL,
     "dayOfWeek" INTEGER NOT NULL,
     "timeSlot" TEXT NOT NULL,
@@ -46,7 +48,7 @@ CREATE TABLE "Availability" (
 );
 
 -- CreateTable
-CREATE TABLE "BlockedDate" (
+CREATE TABLE IF NOT EXISTS "BlockedDate" (
     "id" TEXT NOT NULL,
     "date" TEXT NOT NULL,
     "reason" TEXT,
@@ -55,7 +57,7 @@ CREATE TABLE "BlockedDate" (
 );
 
 -- CreateTable
-CREATE TABLE "PromoCode" (
+CREATE TABLE IF NOT EXISTS "PromoCode" (
     "id" TEXT NOT NULL,
     "code" TEXT NOT NULL,
     "discountPercent" INTEGER NOT NULL,
@@ -69,7 +71,7 @@ CREATE TABLE "PromoCode" (
 );
 
 -- CreateTable
-CREATE TABLE "ServicePackage" (
+CREATE TABLE IF NOT EXISTS "ServicePackage" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT NOT NULL,
@@ -82,7 +84,7 @@ CREATE TABLE "ServicePackage" (
 );
 
 -- CreateTable
-CREATE TABLE "UserPackage" (
+CREATE TABLE IF NOT EXISTS "UserPackage" (
     "id" TEXT NOT NULL,
     "userEmail" TEXT NOT NULL,
     "packageId" TEXT NOT NULL,
@@ -94,7 +96,7 @@ CREATE TABLE "UserPackage" (
 );
 
 -- CreateTable
-CREATE TABLE "Testimonial" (
+CREATE TABLE IF NOT EXISTS "Testimonial" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "rating" INTEGER NOT NULL,
@@ -106,7 +108,7 @@ CREATE TABLE "Testimonial" (
 );
 
 -- CreateTable
-CREATE TABLE "Waitlist" (
+CREATE TABLE IF NOT EXISTS "Waitlist" (
     "id" TEXT NOT NULL,
     "date" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -118,28 +120,41 @@ CREATE TABLE "Waitlist" (
 );
 
 -- CreateTable
-CREATE TABLE "Pricing" (
+CREATE TABLE IF NOT EXISTS "Pricing" (
     "id" TEXT NOT NULL DEFAULT 'singleton',
-    "inrNormal40" INTEGER NOT NULL DEFAULT 2499,
-    "inrUrgent40" INTEGER NOT NULL DEFAULT 4999,
-    "inrNormal90" INTEGER NOT NULL DEFAULT 4500,
-    "inrUrgent90" INTEGER NOT NULL DEFAULT 8000,
-    "inrBtr" INTEGER NOT NULL DEFAULT 2500,
-    "inrNormal" INTEGER NOT NULL DEFAULT 2499,
-    "inrUrgent" INTEGER NOT NULL DEFAULT 4999,
+    "inrNormal40" INTEGER NOT NULL DEFAULT 7000,
+    "inrUrgent40" INTEGER NOT NULL DEFAULT 21000,
+    "inrNormal90" INTEGER NOT NULL DEFAULT 15000,
+    "inrUrgent90" INTEGER NOT NULL DEFAULT 21000,
+    "inrBtr" INTEGER NOT NULL DEFAULT 5000,
+    "inrNormal" INTEGER NOT NULL DEFAULT 7000,
+    "inrUrgent" INTEGER NOT NULL DEFAULT 21000,
     "usdNormal" INTEGER NOT NULL DEFAULT 30,
     "usdUrgent" INTEGER NOT NULL DEFAULT 60,
     "usdBtr" INTEGER NOT NULL DEFAULT 40,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Pricing_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE UNIQUE INDEX "BlockedDate_date_key" ON "BlockedDate"("date");
+-- CreateIndex (IF NOT EXISTS so it's safe to re-run)
+CREATE UNIQUE INDEX IF NOT EXISTS "BlockedDate_date_key" ON "BlockedDate"("date");
+CREATE UNIQUE INDEX IF NOT EXISTS "PromoCode_code_key" ON "PromoCode"("code");
 
--- CreateIndex
-CREATE UNIQUE INDEX "PromoCode_code_key" ON "PromoCode"("code");
+-- AddForeignKey (safe — skips if already exists)
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'UserPackage_packageId_fkey'
+    ) THEN
+        ALTER TABLE "UserPackage" ADD CONSTRAINT "UserPackage_packageId_fkey"
+        FOREIGN KEY ("packageId") REFERENCES "ServicePackage"("id")
+        ON DELETE RESTRICT ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "UserPackage" ADD CONSTRAINT "UserPackage_packageId_fkey" FOREIGN KEY ("packageId") REFERENCES "ServicePackage"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+-- Also safe-add columns for existing DBs that already have the base tables
+-- (runs on upgrade path from old schema, no-ops on fresh install)
+ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "utmSource"    TEXT;
+ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "refundStatus" TEXT;
+ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "refundAmount" INTEGER;
