@@ -63,12 +63,15 @@ export async function POST(request: NextRequest) {
         let meetingLink = booking.meetingLink;
 
         if (!meetingLink) {
-            const dateObj = parseBookingDateTime(
+            // Returns a local datetime string like "2026-03-10T19:00:00" (no Z).
+            // Google Calendar interprets it in the `timezone` field — so the
+            // meeting is created at exactly the slot the user chose.
+            const localDateTimeStr = parseBookingDateTime(
                 booking.consultationDate,
                 booking.consultationTime
             );
 
-            if (dateObj) {
+            if (localDateTimeStr) {
                 try {
                     const event = await createConsultationEvent({
                         summary: `Astrology Consultation: ${booking.name}`,
@@ -81,7 +84,7 @@ export async function POST(request: NextRequest) {
                             `Birth Place: ${booking.birthPlace}`,
                             `Email: ${booking.email} | Phone: ${booking.phone}`,
                         ].join("\n"),
-                        startTime: dateObj,
+                        startTime: localDateTimeStr,
                         durationMinutes: booking.duration,
                         attendeeEmail: booking.email,
                         timezone: booking.userTimezone || "Asia/Kolkata",

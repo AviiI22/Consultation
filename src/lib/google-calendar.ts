@@ -1,5 +1,4 @@
 import { google } from "googleapis";
-import { parse, isValid } from "date-fns";
 
 function getOAuthClient() {
     const oauth2Client = new google.auth.OAuth2(
@@ -20,7 +19,9 @@ function getOAuthClient() {
 export interface CalendarEventDetails {
     summary: string;
     description: string;
-    startTime: Date;
+    /** Local datetime string in the format "YYYY-MM-DDTHH:mm:ss" (no Z / no offset).
+     *  Google Calendar interprets this as being in `timezone`. */
+    startTime: string;
     durationMinutes: number;
     attendeeEmail: string;
     timezone: string;
@@ -44,7 +45,13 @@ export async function createConsultationEvent(details: CalendarEventDetails): Pr
     const oauth2Client = getOAuthClient();
     const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
-    const endTime = new Date(details.startTime.getTime() + details.durationMinutes * 60000);
+    // Compute end time by adding durationMinutes to the local start time string.
+    // We parse the local string as a UTC Date purely for arithmetic, then
+    // format it back as a local string — the `timeZone` field on the API call
+    // tells Google Calendar how to interpret both strings.
+    const startMs = new Date(details.startTime + "Z").getTime();
+    const endMs = startMs + details.durationMinutes * 60000;
+    const endTime = new Date(endMs).toISOString().replace("Z", "").split(".")[0];
     const hostEmail = process.env.GOOGLE_HOST_EMAIL;
 
     const attendees: { email: string; organizer?: boolean }[] = [
@@ -65,11 +72,12 @@ export async function createConsultationEvent(details: CalendarEventDetails): Pr
                 summary: details.summary,
                 description: details.description,
                 start: {
-                    dateTime: details.startTime.toISOString(),
+                    // Local datetime string (no Z) — Google interprets it in `timeZone`
+                    dateTime: details.startTime,
                     timeZone: details.timezone,
                 },
                 end: {
-                    dateTime: endTime.toISOString(),
+                    dateTime: endTime,
                     timeZone: details.timezone,
                 },
                 attendees,
@@ -111,17 +119,44 @@ export async function createConsultationEvent(details: CalendarEventDetails): Pr
 }
 
 /**
- * Helper to parse a booking's date/time string into a Date object.
- * bookingDate: "2026-03-10", bookingTime: "7:00 PM - 8:00 PM"
+ * Parses a booking's date + time slot into a local datetime string
+ * in the format "YYYY-MM-DDTHH:mm:ss" — no timezone offset, no Z.
+ *
+ * Google Calendar interprets this string as being in the `timezone`
+ * field of the event, so passing it directly (without converting to
+ * UTC) ensures the meeting is created at exactly the slot the user
+ * chose, regardless of the server's own timezone.
+ *
+ * @param bookingDate  e.g. "2026-03-10"
+ * @param bookingTime  e.g. "7:00 PM - 8:00 PM"
+ * @returns  e.g. "2026-03-10T19:00:00"  or null if unparseable
  */
 export function parseBookingDateTime(
     bookingDate: string,
     bookingTime: string
-): Date | null {
+): string | null {
+    // Take the start part of the range, e.g. "7:00 PM"
     const timePart = bookingTime.split(" - ")[0].trim();
-    const fullDateStr = `${bookingDate} ${timePart}`;
-    const dateObj = parse(fullDateStr, "yyyy-MM-dd h:mm a", new Date());
-    return isValid(dateObj) ? dateObj : null;
+
+    // Parse using a simple regex so we are NOT subject to the server's locale/TZ
+    const match = timePart.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return null;
+
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    const period = match[3].toUpperCase();
+
+    if (period === "AM") {
+        if (hours === 12) hours = 0;          // 12:xx AM → 00:xx
+    } else {
+        if (hours !== 12) hours += 12;        // 1–11 PM → 13–23
+    }
+
+    const hh = String(hours).padStart(2, "0");
+    const mm = String(minutes).padStart(2, "0");
+
+    // Return a local time string — intentionally NO "Z" / offset
+    return `${bookingDate}T${hh}:${mm}:00`;
 }
 
 export function isGoogleCalendarConfigured(): boolean {
