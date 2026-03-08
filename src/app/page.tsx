@@ -75,7 +75,7 @@ export default function LandingPage() {
 
                 <div className="relative text-center px-4 py-16 sm:py-24">
                     <p className="text-xs sm:text-sm md:text-base text-gold-600 font-medium tracking-[0.3em] uppercase mb-4 sm:mb-6">
-                        Vedic Astrology
+                        Vedic Astrologer
                     </p>
 
                     <h1 className="text-4xl sm:text-6xl lg:text-8xl font-bold text-gold-gradient leading-tight mb-3 sm:mb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
