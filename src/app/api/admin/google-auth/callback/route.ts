@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
-import fs from "fs";
-import path from "path";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
@@ -35,30 +34,22 @@ export async function GET(request: NextRequest) {
         const { tokens } = await oauth2Client.getToken(code);
 
         if (!tokens.refresh_token) {
-            // If no refresh token, maybe they already authorized before. Direct them to re-authorize.
+            // If no refresh token, the user has already authorized before.
+            // They must revoke access at myaccount.google.com/permissions and re-authorize.
             return NextResponse.redirect(
                 new URL("/admin?google_auth=error&reason=no_refresh_token", request.url)
             );
         }
 
-        // Write the refresh token to .env file
-        const envPath = path.join(process.cwd(), ".env");
-        let envContent = fs.readFileSync(envPath, "utf-8");
+        // Persist the refresh token in the database so it survives across
+        // serverless function invocations (Vercel's filesystem is ephemeral).
+        await prisma.appSettings.upsert({
+            where: { key: "GOOGLE_REFRESH_TOKEN" },
+            update: { value: tokens.refresh_token },
+            create: { key: "GOOGLE_REFRESH_TOKEN", value: tokens.refresh_token },
+        });
 
-        if (envContent.includes("GOOGLE_REFRESH_TOKEN=")) {
-            // Replace existing value
-            envContent = envContent.replace(
-                /GOOGLE_REFRESH_TOKEN=.*/,
-                `GOOGLE_REFRESH_TOKEN=${tokens.refresh_token}`
-            );
-        } else {
-            // Append it
-            envContent += `\nGOOGLE_REFRESH_TOKEN=${tokens.refresh_token}\n`;
-        }
-
-        fs.writeFileSync(envPath, envContent, "utf-8");
-
-        // Also set it in the current process so it works immediately without restart
+        // Also cache in process.env for the lifetime of this invocation
         process.env.GOOGLE_REFRESH_TOKEN = tokens.refresh_token;
 
         return NextResponse.redirect(

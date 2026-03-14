@@ -1,16 +1,31 @@
 import { google } from "googleapis";
+import { prisma } from "@/lib/prisma";
 
-function getOAuthClient() {
+/** Resolves the refresh token: env var first, then DB AppSettings. */
+async function getRefreshToken(): Promise<string | null> {
+    if (process.env.GOOGLE_REFRESH_TOKEN) {
+        return process.env.GOOGLE_REFRESH_TOKEN;
+    }
+    try {
+        const row = await prisma.appSettings.findUnique({
+            where: { key: "GOOGLE_REFRESH_TOKEN" },
+        });
+        return row?.value ?? null;
+    } catch {
+        return null;
+    }
+}
+
+async function getOAuthClient() {
     const oauth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_CLIENT_SECRET,
         process.env.GOOGLE_REDIRECT_URI
     );
 
-    if (process.env.GOOGLE_REFRESH_TOKEN) {
-        oauth2Client.setCredentials({
-            refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
-        });
+    const refreshToken = await getRefreshToken();
+    if (refreshToken) {
+        oauth2Client.setCredentials({ refresh_token: refreshToken });
     }
 
     return oauth2Client;
@@ -32,7 +47,9 @@ export async function createConsultationEvent(details: CalendarEventDetails): Pr
     htmlLink: string | null | undefined;
     hangoutLink: string | null | undefined;
 } | null> {
-    if (!process.env.GOOGLE_REFRESH_TOKEN) {
+    const refreshToken = await getRefreshToken();
+
+    if (!refreshToken) {
         console.warn("Google Calendar integration skipped: Missing refresh token. Please connect Google Calendar in the Admin Dashboard.");
         return null;
     }
@@ -42,7 +59,7 @@ export async function createConsultationEvent(details: CalendarEventDetails): Pr
         return null;
     }
 
-    const oauth2Client = getOAuthClient();
+    const oauth2Client = await getOAuthClient();
     const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
     // Compute end time by adding durationMinutes to the local start time string.
@@ -159,10 +176,13 @@ export function parseBookingDateTime(
     return `${bookingDate}T${hh}:${mm}:00`;
 }
 
-export function isGoogleCalendarConfigured(): boolean {
-    return !!(
-        process.env.GOOGLE_CLIENT_ID &&
-        process.env.GOOGLE_CLIENT_SECRET &&
-        process.env.GOOGLE_REFRESH_TOKEN
-    );
+export async function isGoogleCalendarConfigured(): Promise<boolean> {
+    if (
+        !process.env.GOOGLE_CLIENT_ID ||
+        !process.env.GOOGLE_CLIENT_SECRET
+    ) {
+        return false;
+    }
+    const token = await getRefreshToken();
+    return !!token;
 }

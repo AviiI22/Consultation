@@ -119,3 +119,11 @@ model Pricing {
   usdBtr          Int      @default(40)
   updatedAt       DateTime @updatedAt
 }
+
+/// Generic key-value store for application settings (e.g. OAuth tokens).
+/// Used instead of the filesystem so values persist on serverless platforms.
+model AppSettings {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
