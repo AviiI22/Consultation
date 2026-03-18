@@ -521,8 +521,38 @@ function AdminDashboardInner() {
                                     <Video className="w-4 h-4" /> Connect Google Calendar
                                 </a>
                             ) : googleConnected === true ? (
-                                <div className="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-medium flex items-center gap-2">
-                                    <Wifi className="w-4 h-4" /> Google Meet: Connected
+                                <div className="flex items-center gap-2">
+                                    <div className="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-medium flex items-center gap-2">
+                                        <Wifi className="w-4 h-4" /> Connected
+                                    </div>
+                                    <a
+                                        href="/api/admin/google-auth"
+                                        className="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 text-sm font-medium hover:bg-blue-100 transition-all flex items-center gap-1.5"
+                                    >
+                                        <Video className="w-3.5 h-3.5" /> Reconnect
+                                    </a>
+                                    <button
+                                        onClick={async () => {
+                                            setActionLoading("google-disconnect");
+                                            try {
+                                                const res = await fetch("/api/admin/google-auth/disconnect", { method: "POST" });
+                                                if (res.ok) {
+                                                    setGoogleConnected(false);
+                                                    showToast("Google Calendar disconnected. You can reconnect anytime.", "success");
+                                                } else {
+                                                    showToast("Failed to disconnect Google Calendar.", "error");
+                                                }
+                                            } catch {
+                                                showToast("Error disconnecting Google Calendar.", "error");
+                                            } finally {
+                                                setActionLoading(null);
+                                            }
+                                        }}
+                                        disabled={actionLoading === "google-disconnect"}
+                                        className="px-3 py-2 rounded-xl bg-red-50 text-red-600 border border-red-200 text-sm font-medium hover:bg-red-100 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                                    >
+                                        <WifiOff className="w-3.5 h-3.5" /> {actionLoading === "google-disconnect" ? "..." : "Disconnect"}
+                                    </button>
                                 </div>
                             ) : (
                                 <div className="px-4 py-2 rounded-xl bg-gray-50 text-gray-400 border text-sm font-medium flex items-center gap-2">
