@@ -1,19 +1,19 @@
 import { google } from "googleapis";
 import { prisma } from "@/lib/prisma";
 
-/** Resolves the refresh token: env var first, then DB AppSettings. */
+/** Resolves the refresh token: DB AppSettings first, then env var as fallback. */
 async function getRefreshToken(): Promise<string | null> {
-    if (process.env.GOOGLE_REFRESH_TOKEN) {
-        return process.env.GOOGLE_REFRESH_TOKEN;
-    }
+    // Prefer the database token — it is written by the Admin Dashboard OAuth flow
+    // and is always the freshest. The env var is only a fallback for initial setup.
     try {
         const row = await prisma.appSettings.findUnique({
             where: { key: "GOOGLE_REFRESH_TOKEN" },
         });
-        return row?.value ?? null;
+        if (row?.value) return row.value;
     } catch {
-        return null;
+        // DB lookup failed — fall through to env var
     }
+    return process.env.GOOGLE_REFRESH_TOKEN ?? null;
 }
 
 async function getOAuthClient() {
