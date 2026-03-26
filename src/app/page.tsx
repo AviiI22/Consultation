@@ -117,6 +117,28 @@ export default function LandingPage() {
                             work.astro.avii@gmail.com
                         </a>
                     </div>
+                    <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-gray-500">
+                        <a
+                            href="mailto:work.astro.avii@gmail.com"
+                            className="hover:text-gold-600 transition-colors"
+                        >
+                            Contact Us
+                        </a>
+                        <span className="hidden sm:inline text-cream-400">·</span>
+                        <Link
+                            href="/terms"
+                            className="hover:text-gold-600 transition-colors"
+                        >
+                            Terms &amp; Conditions
+                        </Link>
+                        <span className="hidden sm:inline text-cream-400">·</span>
+                        <Link
+                            href="/refunds"
+                            className="hover:text-gold-600 transition-colors"
+                        >
+                            Refunds &amp; Cancellations
+                        </Link>
+                    </div>
                     <p className="text-xs text-cream-600">
                         © {new Date().getFullYear()} Sanskar Dixit
                         {" · "}<Link href="/admin/login" className="hover:text-gold-500 transition-colors">Admin</Link>
