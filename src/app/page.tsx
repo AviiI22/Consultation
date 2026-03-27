@@ -126,6 +126,13 @@ export default function LandingPage() {
                         </a>
                         <span className="hidden sm:inline text-cream-400">·</span>
                         <Link
+                            href="/privacy"
+                            className="hover:text-gold-600 transition-colors"
+                        >
+                            Privacy Policy
+                        </Link>
+                        <span className="hidden sm:inline text-cream-400">·</span>
+                        <Link
                             href="/terms"
                             className="hover:text-gold-600 transition-colors"
                         >

@@ -7,15 +7,24 @@ import { authOptions } from "@/lib/auth";
  * POST /api/admin/cleanup-pending
  * Deletes Pending bookings older than 2 hours.
  * Also auto-marks Upcoming bookings whose date+time has passed as Completed.
- * Admin-only.
+ *
+ * Supports two auth methods:
+ *   1. Admin session (when triggered from dashboard)
+ *   2. CRON_SECRET bearer token (when triggered by Vercel Cron)
  */
 export async function POST(request: NextRequest) {
+    // Check admin session first
     const session = await getServerSession(authOptions);
-    if (!session) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
-    void request;
+    if (!session) {
+        // Fall back to CRON_SECRET for Vercel Cron calls
+        const cronSecret = process.env.CRON_SECRET;
+        const authHeader = request.headers.get("authorization");
+
+        if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+    }
 
     try {
         const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
@@ -49,4 +58,9 @@ export async function POST(request: NextRequest) {
         console.error("Cleanup error:", error);
         return NextResponse.json({ error: "Cleanup failed" }, { status: 500 });
     }
+}
+
+// Support GET for Vercel Cron (which uses GET by default)
+export async function GET(request: NextRequest) {
+    return POST(request);
 }

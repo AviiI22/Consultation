@@ -40,6 +40,13 @@ model Booking {
   refundStatus      String?            // null | Pending | Issued | N/A
   refundAmount      Int?               // refund amount if applicable
   createdAt         DateTime @default(now())
+
+  // ─── Performance indexes ──────────────────────────────
+  @@index([email])
+  @@index([paymentStatus])
+  @@index([status])
+  @@index([consultationDate, consultationTime])
+  @@index([createdAt])
 }
 
 model Availability {
@@ -126,4 +133,18 @@ model AppSettings {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+/// Audit log for tracking admin actions (booking updates, bulk emails, etc.)
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String               // e.g. "booking.status_update", "booking.notes_update", "announcement.sent"
+  admin     String   @default("admin")
+  targetId  String?              // ID of the affected entity (e.g. booking ID)
+  details   String?              // JSON string with action-specific details
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+  @@index([targetId])
 }

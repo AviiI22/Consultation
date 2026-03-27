@@ -5,29 +5,20 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
     Calendar,
-    Clock,
-    User,
-    Mail,
-    Phone,
-    MapPin,
-    CreditCard,
     CheckCircle2,
     XCircle,
-    StickyNote,
-    Link2,
-    Send,
     Search,
     Loader2,
-    Users,
-    Download,
-    Megaphone,
-    Box,
     LayoutDashboard,
-    Sparkles,
-    Video,
-    Wifi,
-    WifiOff,
 } from "lucide-react";
+
+import { BookingCard, type Booking } from "@/components/admin/BookingCard";
+import { StatsGrid } from "@/components/admin/StatsGrid";
+import { QuickActions } from "@/components/admin/QuickActions";
+import { ClientsTab, type ClientData } from "@/components/admin/ClientsTab";
+import { PackagesTab } from "@/components/admin/PackagesTab";
+import { AnnouncementModal } from "@/components/admin/AnnouncementModal";
+import { NotesModal, MeetLinkModal } from "@/components/admin/NotesModal";
 
 interface ServicePackage {
     id: string;
@@ -36,50 +27,6 @@ interface ServicePackage {
     sessionCount: number;
     price: number;
     isActive: boolean;
-}
-
-interface Booking {
-    id: string;
-    consultationType: string;
-    btrOption: string;
-    duration: number;
-    consultationDate: string;
-    consultationTime: string;
-    name: string;
-    dob: string;
-    tob: string;
-    gender: string;
-    email: string;
-    phone: string;
-    birthPlace: string;
-    concern: string;
-    amount: number;
-    paymentStatus: string;
-    status: string;
-    meetingLink: string | null;
-    adminNotes: string | null;
-    promoCode: string | null;
-    discountAmount: number;
-    userTimezone: string;
-    adminTimezone: string;
-    currency: string;
-    createdAt: string;
-    utmSource: string | null;
-    refundStatus: string | null;
-}
-
-interface ClientData {
-    name: string;
-    email: string;
-    phone: string;
-    dob: string;
-    tob: string;
-    gender: string;
-    birthPlace: string;
-    bookingCount: number;
-    totalSpent: number;
-    lastBooking: string;
-    userTimezone: string;
 }
 
 function deriveClients(bookings: Booking[]): ClientData[] {
@@ -123,24 +70,14 @@ function AdminDashboardInner() {
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState<"bookings" | "clients" | "packages">("bookings");
     const [packages, setPackages] = useState<ServicePackage[]>([]);
-    const [packageModal, setPackageModal] = useState(false);
-    const [pkgName, setPkgName] = useState("");
-    const [pkgDesc, setPkgDesc] = useState("");
-    const [pkgSessions, setPkgSessions] = useState("");
-    const [pkgPrice, setPkgPrice] = useState("");
-    const [clientSearch, setClientSearch] = useState("");
     const [actionLoading, setActionLoading] = useState<string | null>(null);
-    const [noteModal, setNoteModal] = useState<{ id: string; current: string } | null>(null);
-    const [linkModal, setLinkModal] = useState<{ id: string; current: string } | null>(null);
-    const [noteText, setNoteText] = useState("");
-    const [linkText, setLinkText] = useState("");
-    const [announceModal, setAnnounceModal] = useState(false);
-    const [announceSubject, setAnnounceSubject] = useState("");
-    const [announceMessage, setAnnounceMessage] = useState("");
     const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
     const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
     const [bookingSearch, setBookingSearch] = useState("");
     const [bookingStatusFilter, setBookingStatusFilter] = useState<"all" | "Upcoming" | "Completed" | "Cancelled">("all");
+    const [announceModal, setAnnounceModal] = useState(false);
+    const [noteModal, setNoteModal] = useState<{ id: string; current: string } | null>(null);
+    const [linkModal, setLinkModal] = useState<{ id: string; current: string } | null>(null);
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -256,22 +193,10 @@ function AdminDashboardInner() {
         }
     };
 
+    // ─── Derived data ───────────────────────────────────────────────────────
     const today = new Date().toISOString().split("T")[0];
     const paid = bookings.filter((b) => b.paymentStatus === "Paid");
-    const upcoming = paid.filter((b) => b.consultationDate >= today && b.status === "Upcoming");
-    const completed = paid.filter((b) => b.status === "Completed");
-    const cancelled = paid.filter((b) => b.status === "Cancelled");
-    const past = paid.filter((b) => b.consultationDate < today && b.status === "Upcoming");
-
-    const totalRevenue = paid.reduce((s, b) => s + b.amount, 0);
-
     const clients = deriveClients(bookings);
-    const filteredClients = clients.filter(
-        (c) =>
-            c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
-            c.email.toLowerCase().includes(clientSearch.toLowerCase()) ||
-            c.phone.includes(clientSearch)
-    );
 
     // Booking search/filter
     const filteredBookings = paid.filter((b) => {
@@ -285,170 +210,51 @@ function AdminDashboardInner() {
     const filteredCancelled = filteredBookings.filter((b) => b.status === "Cancelled");
     const filteredPast = filteredBookings.filter((b) => b.consultationDate < today && b.status === "Upcoming");
 
-    const statusColor = (s: string) => {
-        if (s === "Completed") return "bg-green-100 text-green-700 border-green-200";
-        if (s === "Cancelled") return "bg-red-100 text-red-700 border-red-200";
-        return "bg-blue-100 text-blue-700 border-blue-200";
+    // ─── Quick action handlers ──────────────────────────────────────────────
+    const handleConnectGoogle = () => { window.location.href = "/api/admin/google-auth"; };
+    const handleDisconnectGoogle = async () => {
+        setActionLoading("google-disconnect");
+        try {
+            const res = await fetch("/api/admin/google-auth/disconnect", { method: "POST" });
+            if (res.ok) {
+                setGoogleConnected(false);
+                showToast("Google Calendar disconnected. You can reconnect anytime.", "success");
+            } else {
+                showToast("Failed to disconnect Google Calendar.", "error");
+            }
+        } catch {
+            showToast("Error disconnecting Google Calendar.", "error");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+    const handleRunReminders = async () => {
+        setActionLoading("reminders");
+        try {
+            const res = await fetch("/api/admin/reminders/send", { method: "POST" });
+            const data = await res.json();
+            showToast(data.message || data.error, data.message ? "success" : "error");
+        } catch {
+            showToast("Failed to run reminders.", "error");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+    const handleCleanup = async () => {
+        setActionLoading("cleanup");
+        try {
+            const res = await fetch("/api/admin/cleanup-pending", { method: "POST" });
+            const data = await res.json();
+            showToast(data.message || data.error, res.ok ? "success" : "error");
+            if (res.ok) await fetchBookings();
+        } catch {
+            showToast("Cleanup failed.", "error");
+        } finally {
+            setActionLoading(null);
+        }
     };
 
-    const renderBookingCard = (b: Booking, dim = false) => (
-        <div
-            key={b.id}
-            className={`rounded-xl border p-5 space-y-3 transition-all ${dim ? "opacity-60 bg-cream-50 border-cream-300" : "bg-white border-cream-400/50 shadow-sm"
-                }`}
-        >
-            {/* Header */}
-            <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-gold-600" />
-                    <span className="font-semibold text-gray-800">{b.name}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${statusColor(b.status)}`}>
-                        {b.status}
-                    </span>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                    <span className="text-gold-600 font-bold">{b.currency || 'INR'} {b.amount.toLocaleString("en-IN")}</span>
-                    {b.promoCode && (
-                        <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-xs">
-                            {b.promoCode} (-{b.currency || 'INR'} {b.discountAmount})
-                        </span>
-                    )}
-                </div>
-            </div>
-
-            {/* Booking ID */}
-            <div className="flex items-center gap-2 text-xs text-gray-500 bg-cream-50 p-2 rounded-lg border border-cream-200">
-                <strong className="text-gray-600">Booking ID:</strong>
-                <span className="font-mono text-[10px] sm:text-xs select-all text-gold-700">{b.id}</span>
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        navigator.clipboard.writeText(b.id);
-                    }}
-                    className="ml-auto text-gold-600 hover:text-gold-500 underline underline-offset-2 transition-colors shrink-0"
-                >
-                    Copy
-                </button>
-            </div>
-
-            {/* Details grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs text-gray-600 mt-3">
-                <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-gold-500" />{b.consultationDate}</span>
-                <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-gold-500" />{b.consultationTime}</span>
-                <span className="flex items-center gap-1"><CreditCard className="w-3 h-3 text-gold-500" />{b.duration} min • {b.consultationType}</span>
-                <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-gold-500" />{b.email}</span>
-                <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-gold-500" />{b.phone}</span>
-                <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-gold-500" />{b.birthPlace}</span>
-                <span className="flex items-center gap-1 text-gray-500">DOB: {b.dob}</span>
-                <span className="flex items-center gap-1 text-gray-500">TOB: {b.tob}</span>
-                <span className="flex items-center gap-1 text-gray-500">Gender: {b.gender}</span>
-                <span className="flex items-center gap-1 text-gray-500 font-medium col-span-2 sm:col-span-3 bg-gold-50/50 px-2 py-1 rounded">
-                    <Clock className="w-3 h-3 text-gold-600" />
-                    Booked On: {new Date(b.createdAt).toLocaleString("en-IN", {
-                        dateStyle: 'medium',
-                        timeStyle: 'short'
-                    })}
-                </span>
-            </div>
-
-            {/* Concern */}
-            {b.concern && (
-                <div className="text-xs text-gray-500 bg-cream-50 rounded-lg p-2 border border-cream-200">
-                    <strong className="text-gray-600">Concern:</strong> {b.concern}
-                </div>
-            )}
-
-            {/* Notes / Meeting Link */}
-            {b.adminNotes && (
-                <div className="text-xs text-amber-700 bg-amber-50 rounded-lg p-2 border border-amber-200">
-                    <strong>📝 Notes:</strong> {b.adminNotes}
-                </div>
-            )}
-            {/* Meet Link */}
-            {b.meetingLink ? (
-                <div className="text-xs text-blue-700 bg-blue-50 rounded-lg p-2 border border-blue-200 flex items-center gap-2">
-                    <Video className="w-3 h-3 flex-shrink-0" />
-                    <strong>Google Meet:</strong>{" "}
-                    <a href={b.meetingLink} target="_blank" rel="noopener noreferrer" className="underline truncate">
-                        {b.meetingLink}
-                    </a>
-                </div>
-            ) : (
-                b.paymentStatus === "Paid" && googleConnected && (
-                    <div className="text-xs text-amber-700 bg-amber-50 rounded-lg p-2 border border-amber-200">
-                        <span className="font-medium">⚠️ No meeting link yet.</span>{" "}
-                        Click &ldquo;Generate Meet&rdquo; below to create one.
-                    </div>
-                )
-            )}
-
-            {/* Actions */}
-            <div className="flex flex-wrap gap-2 pt-2 border-t border-cream-200">
-                {b.status === "Upcoming" && (
-                    <>
-                        <button
-                            onClick={() => updateBooking(b.id, { status: "Completed" })}
-                            disabled={actionLoading === b.id}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors disabled:opacity-50"
-                        >
-                            <CheckCircle2 className="w-3 h-3" /> Complete
-                        </button>
-                        <button
-                            onClick={() => updateBooking(b.id, { status: "Cancelled" })}
-                            disabled={actionLoading === b.id}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-50"
-                        >
-                            <XCircle className="w-3 h-3" /> Cancel
-                        </button>
-                    </>
-                )}
-                <button
-                    onClick={() => {
-                        setNoteModal({ id: b.id, current: b.adminNotes || "" });
-                        setNoteText(b.adminNotes || "");
-                    }}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
-                >
-                    <StickyNote className="w-3 h-3" /> Notes
-                </button>
-                <button
-                    onClick={() => {
-                        setLinkModal({ id: b.id, current: b.meetingLink || "" });
-                        setLinkText(b.meetingLink || "");
-                    }}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
-                >
-                    <Link2 className="w-3 h-3" /> Meeting Link
-                </button>
-                {/* Generate Meet button — shown when Google is connected and no link exists */}
-                {b.paymentStatus === "Paid" && googleConnected && (
-                    <button
-                        onClick={() => generateMeetLink(b.id, true)}
-                        disabled={actionLoading === `meet-${b.id}`}
-                        className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors disabled:opacity-50"
-                    >
-                        {actionLoading === `meet-${b.id}` ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                            <Video className="w-3 h-3" />
-                        )}
-                        {b.meetingLink ? "Regenerate Meet" : "Generate Meet"}
-                    </button>
-                )}
-                {b.status === "Completed" && (
-                    <button
-                        onClick={() => sendFollowUp(b.id)}
-                        disabled={actionLoading === `followup-${b.id}`}
-                        className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors disabled:opacity-50"
-                    >
-                        <Send className="w-3 h-3" />
-                        {actionLoading === `followup-${b.id}` ? "Sending..." : "Follow-Up"}
-                    </button>
-                )}
-            </div>
-        </div>
-    );
-
+    // ─── Render ─────────────────────────────────────────────────────────────
     if (loading) {
         return (
             <div className="min-h-[60vh] flex items-center justify-center">
@@ -470,6 +276,7 @@ function AdminDashboardInner() {
                     {toast.message}
                 </div>
             )}
+
             {/* Top Bar */}
             <header className="bg-white border-b border-cream-400/50 sticky top-0 z-30">
                 <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -482,155 +289,42 @@ function AdminDashboardInner() {
                             <p className="text-[10px] text-gold-600 font-bold uppercase tracking-widest mt-1">Management Suite</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => signOut()}
-                            className="text-xs font-semibold text-red-600 hover:text-red-500 transition-colors"
-                        >
-                            Log Out
-                        </button>
-                    </div>
+                    <button
+                        onClick={() => signOut()}
+                        className="text-xs font-semibold text-red-600 hover:text-red-500 transition-colors"
+                    >
+                        Log Out
+                    </button>
                 </div>
             </header>
 
             <main className="max-w-7xl mx-auto px-4 py-8">
                 {/* Stats / Quick Actions */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-white p-5 rounded-2xl border border-cream-400/50 shadow-sm">
-                            <p className="text-xs font-semibold text-cream-600 uppercase">Total Bookings</p>
-                            <p className="text-3xl font-serif font-bold text-gray-800 mt-1">{bookings.length}</p>
-                        </div>
-                        <div className="bg-white p-5 rounded-2xl border border-cream-400/50 shadow-sm">
-                            <p className="text-xs font-semibold text-cream-600 uppercase">Total Clients</p>
-                            <p className="text-3xl font-serif font-bold text-gray-800 mt-1">{deriveClients(bookings).length}</p>
-                        </div>
-                    </div>
-
-                    {/* Quick Actions */}
-                    <div className="bg-white p-5 rounded-2xl border border-cream-400/50 shadow-sm">
-                        <p className="text-xs font-semibold text-cream-600 uppercase mb-4">Quick Actions</p>
-                        <div className="flex flex-wrap gap-2">
-                            {/* Google Calendar Status & Connect */}
-                            {googleConnected === false ? (
-                                <a
-                                    href="/api/admin/google-auth"
-                                    className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-500 shadow-sm flex items-center gap-2 transition-all"
-                                >
-                                    <Video className="w-4 h-4" /> Connect Google Calendar
-                                </a>
-                            ) : googleConnected === true ? (
-                                <div className="flex items-center gap-2">
-                                    <div className="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-medium flex items-center gap-2">
-                                        <Wifi className="w-4 h-4" /> Connected
-                                    </div>
-                                    <a
-                                        href="/api/admin/google-auth"
-                                        className="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 text-sm font-medium hover:bg-blue-100 transition-all flex items-center gap-1.5"
-                                    >
-                                        <Video className="w-3.5 h-3.5" /> Reconnect
-                                    </a>
-                                    <button
-                                        onClick={async () => {
-                                            setActionLoading("google-disconnect");
-                                            try {
-                                                const res = await fetch("/api/admin/google-auth/disconnect", { method: "POST" });
-                                                if (res.ok) {
-                                                    setGoogleConnected(false);
-                                                    showToast("Google Calendar disconnected. You can reconnect anytime.", "success");
-                                                } else {
-                                                    showToast("Failed to disconnect Google Calendar.", "error");
-                                                }
-                                            } catch {
-                                                showToast("Error disconnecting Google Calendar.", "error");
-                                            } finally {
-                                                setActionLoading(null);
-                                            }
-                                        }}
-                                        disabled={actionLoading === "google-disconnect"}
-                                        className="px-3 py-2 rounded-xl bg-red-50 text-red-600 border border-red-200 text-sm font-medium hover:bg-red-100 transition-all flex items-center gap-1.5 disabled:opacity-50"
-                                    >
-                                        <WifiOff className="w-3.5 h-3.5" /> {actionLoading === "google-disconnect" ? "..." : "Disconnect"}
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="px-4 py-2 rounded-xl bg-gray-50 text-gray-400 border text-sm font-medium flex items-center gap-2">
-                                    <WifiOff className="w-4 h-4" /> Checking...
-                                </div>
-                            )}
-                            <button
-                                onClick={async () => {
-                                    setActionLoading("reminders");
-                                    try {
-                                        const res = await fetch("/api/admin/reminders/send", {
-                                            method: "POST",
-                                        });
-                                        const data = await res.json();
-                                        showToast(data.message || data.error, data.message ? "success" : "error");
-                                    } catch {
-                                        showToast("Failed to run reminders.", "error");
-                                    } finally {
-                                        setActionLoading(null);
-                                    }
-                                }}
-                                disabled={actionLoading === "reminders"}
-                                className="px-4 py-2 rounded-xl bg-gold-100 text-gold-700 text-sm font-medium hover:bg-gold-200 transition-all flex items-center gap-2 disabled:opacity-50"
-                            >
-                                <Sparkles className="w-4 h-4" /> {actionLoading === "reminders" ? "Running..." : "Run Reminders"}
-                            </button>
-                            <button
-                                onClick={async () => {
-                                    setActionLoading("cleanup");
-                                    try {
-                                        const res = await fetch("/api/admin/cleanup-pending", { method: "POST" });
-                                        const data = await res.json();
-                                        showToast(data.message || data.error, res.ok ? "success" : "error");
-                                        if (res.ok) await fetchBookings();
-                                    } catch {
-                                        showToast("Cleanup failed.", "error");
-                                    } finally {
-                                        setActionLoading(null);
-                                    }
-                                }}
-                                disabled={actionLoading === "cleanup"}
-                                className="px-4 py-2 rounded-xl bg-red-50 text-red-700 border border-red-200 text-sm font-medium hover:bg-red-100 transition-all flex items-center gap-2 disabled:opacity-50"
-                            >
-                                <XCircle className="w-4 h-4" /> {actionLoading === "cleanup" ? "Cleaning..." : "Cleanup &amp; Auto-complete"}
-                            </button>
-                            <button
-                                onClick={async () => {
-                                    window.location.href = "/api/admin/export?type=bookings";
-                                }}
-                                className="px-4 py-2 rounded-xl bg-cream-100 text-cream-700 text-sm font-medium hover:bg-cream-200 transition-all flex items-center gap-2"
-                            >
-                                <Download className="w-4 h-4" /> Bookings
-                            </button>
-                            <button
-                                onClick={async () => {
-                                    window.location.href = "/api/admin/export?type=clients";
-                                }}
-                                className="px-4 py-2 rounded-xl bg-cream-100 text-cream-700 text-sm font-medium hover:bg-cream-200 transition-all flex items-center gap-2"
-                            >
-                                <Download className="w-4 h-4" /> Clients
-                            </button>
-                            <button
-                                onClick={() => setAnnounceModal(true)}
-                                className="px-4 py-2 rounded-xl bg-gold-600 text-white text-sm font-medium hover:bg-gold-500 shadow-sm flex items-center gap-2 transition-all"
-                            >
-                                <Megaphone className="w-4 h-4" /> Bulk Announcement
-                            </button>
-                        </div>
-                    </div>
+                    <StatsGrid
+                        totalBookings={bookings.length}
+                        totalClients={clients.length}
+                    />
+                    <QuickActions
+                        googleConnected={googleConnected}
+                        actionLoading={actionLoading}
+                        onConnectGoogle={handleConnectGoogle}
+                        onDisconnectGoogle={handleDisconnectGoogle}
+                        onRunReminders={handleRunReminders}
+                        onCleanup={handleCleanup}
+                        onExportBookings={() => { window.location.href = "/api/admin/export?type=bookings"; }}
+                        onExportClients={() => { window.location.href = "/api/admin/export?type=clients"; }}
+                        onOpenAnnouncement={() => setAnnounceModal(true)}
+                    />
                 </div>
 
-                {/* Tabs */}
-                <div className="flex gap-2 mb-6">
+                {/* Tabs — scrollable on mobile */}
+                <div className="flex gap-2 mb-6 overflow-x-auto pb-1 -mx-1 px-1">
                     {(["bookings", "clients", "packages"] as const).map((t) => (
                         <button
                             key={t}
                             onClick={() => setTab(t)}
-                            className={`px-5 py-2 rounded-xl text-sm font-medium capitalize transition-all ${tab === t
+                            className={`px-5 py-2 rounded-xl text-sm font-medium capitalize transition-all whitespace-nowrap ${tab === t
                                 ? "bg-gold-500 text-white shadow-sm"
                                 : "bg-white text-cream-700 border border-cream-400/50 hover:bg-cream-50"
                                 }`}
@@ -666,20 +360,49 @@ function AdminDashboardInner() {
                                 <option value="Cancelled">Cancelled</option>
                             </select>
                         </div>
+
                         <div className="space-y-8">
                             {filteredUpcoming.length > 0 && (
                                 <section>
                                     <h2 className="text-lg font-serif text-gray-800 mb-3 flex items-center gap-2">
                                         <Calendar className="w-5 h-5 text-gold-600" /> Upcoming ({filteredUpcoming.length})
                                     </h2>
-                                    <div className="space-y-3">{filteredUpcoming.map((b) => renderBookingCard(b))}</div>
+                                    <div className="space-y-3">
+                                        {filteredUpcoming.map((b) => (
+                                            <BookingCard
+                                                key={b.id}
+                                                booking={b}
+                                                actionLoading={actionLoading}
+                                                googleConnected={googleConnected}
+                                                onUpdateBooking={updateBooking}
+                                                onSendFollowUp={sendFollowUp}
+                                                onGenerateMeet={generateMeetLink}
+                                                onOpenNotes={(id, current) => setNoteModal({ id, current })}
+                                                onOpenMeetLink={(id, current) => setLinkModal({ id, current })}
+                                            />
+                                        ))}
+                                    </div>
                                 </section>
                             )}
                             {filteredPast.length > 0 && (
                                 <section>
                                     <h2 className="text-lg font-serif text-gray-800 mb-3">⏰ Needs Action ({filteredPast.length})</h2>
                                     <p className="text-xs text-gray-500 mb-3">Past bookings still marked as Upcoming. Click &ldquo;Cleanup &amp; Auto-complete&rdquo; in Quick Actions to handle them automatically.</p>
-                                    <div className="space-y-3">{filteredPast.map((b) => renderBookingCard(b))}</div>
+                                    <div className="space-y-3">
+                                        {filteredPast.map((b) => (
+                                            <BookingCard
+                                                key={b.id}
+                                                booking={b}
+                                                actionLoading={actionLoading}
+                                                googleConnected={googleConnected}
+                                                onUpdateBooking={updateBooking}
+                                                onSendFollowUp={sendFollowUp}
+                                                onGenerateMeet={generateMeetLink}
+                                                onOpenNotes={(id, current) => setNoteModal({ id, current })}
+                                                onOpenMeetLink={(id, current) => setLinkModal({ id, current })}
+                                            />
+                                        ))}
+                                    </div>
                                 </section>
                             )}
                             {filteredCompleted.length > 0 && (
@@ -687,7 +410,22 @@ function AdminDashboardInner() {
                                     <h2 className="text-lg font-serif text-gray-800 mb-3 flex items-center gap-2">
                                         <CheckCircle2 className="w-5 h-5 text-green-600" /> Completed ({filteredCompleted.length})
                                     </h2>
-                                    <div className="space-y-3">{filteredCompleted.map((b) => renderBookingCard(b, true))}</div>
+                                    <div className="space-y-3">
+                                        {filteredCompleted.map((b) => (
+                                            <BookingCard
+                                                key={b.id}
+                                                booking={b}
+                                                dim
+                                                actionLoading={actionLoading}
+                                                googleConnected={googleConnected}
+                                                onUpdateBooking={updateBooking}
+                                                onSendFollowUp={sendFollowUp}
+                                                onGenerateMeet={generateMeetLink}
+                                                onOpenNotes={(id, current) => setNoteModal({ id, current })}
+                                                onOpenMeetLink={(id, current) => setLinkModal({ id, current })}
+                                            />
+                                        ))}
+                                    </div>
                                 </section>
                             )}
                             {filteredCancelled.length > 0 && (
@@ -695,7 +433,22 @@ function AdminDashboardInner() {
                                     <h2 className="text-lg font-serif text-gray-800 mb-3 flex items-center gap-2">
                                         <XCircle className="w-5 h-5 text-red-600" /> Cancelled ({filteredCancelled.length})
                                     </h2>
-                                    <div className="space-y-3">{filteredCancelled.map((b) => renderBookingCard(b, true))}</div>
+                                    <div className="space-y-3">
+                                        {filteredCancelled.map((b) => (
+                                            <BookingCard
+                                                key={b.id}
+                                                booking={b}
+                                                dim
+                                                actionLoading={actionLoading}
+                                                googleConnected={googleConnected}
+                                                onUpdateBooking={updateBooking}
+                                                onSendFollowUp={sendFollowUp}
+                                                onGenerateMeet={generateMeetLink}
+                                                onOpenNotes={(id, current) => setNoteModal({ id, current })}
+                                                onOpenMeetLink={(id, current) => setLinkModal({ id, current })}
+                                            />
+                                        ))}
+                                    </div>
                                 </section>
                             )}
                             {filteredBookings.length === 0 && (
@@ -709,304 +462,39 @@ function AdminDashboardInner() {
 
                 {/* Packages Tab */}
                 {tab === "packages" && (
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-cream-400/50">
-                            <h2 className="text-lg font-serif text-gray-800 flex items-center gap-2">
-                                <Box className="w-5 h-5 text-gold-600" /> Service Packages
-                            </h2>
-                            <button
-                                onClick={() => setPackageModal(true)}
-                                className="px-4 py-2 rounded-lg bg-gold-600 text-white text-sm font-medium"
-                            >
-                                + Create Package
-                            </button>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {packages.map((pkg) => (
-                                <div key={pkg.id} className="bg-white border border-cream-400/50 p-5 rounded-xl shadow-sm space-y-3">
-                                    <div className="flex justify-between items-start">
-                                        <h3 className="font-bold text-gray-800">{pkg.name}</h3>
-                                        <span className="text-gold-600 font-bold text-lg">₹{pkg.price}</span>
-                                    </div>
-                                    <p className="text-sm text-gray-600">{pkg.description}</p>
-                                    <div className="flex items-center gap-2 text-xs font-semibold text-cream-600">
-                                        <span className="bg-cream-100 px-2 py-1 rounded">{pkg.sessionCount} Sessions</span>
-                                        <span className={pkg.isActive ? "text-green-600" : "text-red-600"}>
-                                            {pkg.isActive ? "Active" : "Inactive"}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    <PackagesTab
+                        packages={packages}
+                        onRefresh={fetchPackages}
+                        showToast={showToast}
+                    />
                 )}
 
                 {/* Clients Tab */}
                 {tab === "clients" && (
-                    <div className="space-y-4">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cream-500" />
-                            <input
-                                type="text"
-                                placeholder="Search clients..."
-                                value={clientSearch}
-                                onChange={(e) => setClientSearch(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-cream-400/50 text-sm text-gray-800 placeholder-cream-400 focus:outline-none focus:border-gold-500"
-                            />
-                        </div>
-                        <div className="space-y-3">
-                            {filteredClients.map((c) => (
-                                <div key={c.email} className="bg-white rounded-xl border border-cream-400/50 p-4 shadow-sm">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <Users className="w-4 h-4 text-gold-600" />
-                                            <span className="font-semibold text-gray-800">{c.name}</span>
-                                            <span className="text-xs bg-cream-200 text-cream-700 px-2 py-0.5 rounded-full">
-                                                {c.bookingCount} booking{c.bookingCount !== 1 ? "s" : ""}
-                                            </span>
-                                        </div>
-                                        <span className="text-sm font-bold text-gold-600">{c.totalSpent.toLocaleString("en-IN")}</span>
-                                    </div>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs text-gray-600">
-                                        <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-gold-400" />{c.email}</span>
-                                        <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-gold-400" />{c.phone}</span>
-                                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-gold-400" />{c.birthPlace}</span>
-                                        <span>DOB: {c.dob}</span>
-                                        <span>TOB: {c.tob}</span>
-                                        <span>Gender: {c.gender}</span>
-                                    </div>
-                                </div>
-                            ))}
-                            {filteredClients.length === 0 && (
-                                <div className="text-center py-8 text-cream-600">No clients found.</div>
-                            )}
-                        </div>
-                    </div>
+                    <ClientsTab clients={clients} />
                 )}
 
-                {/* Notes Modal */}
-                {noteModal && (
-                    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setNoteModal(null)}>
-                        <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                            <h3 className="text-lg font-serif text-gray-800 mb-3">📝 Admin Notes</h3>
-                            <textarea
-                                value={noteText}
-                                onChange={(e) => setNoteText(e.target.value)}
-                                rows={4}
-                                className="w-full p-3 rounded-xl bg-cream-50 border-2 border-cream-400/60 text-sm focus:outline-none focus:border-gold-500 resize-none"
-                                placeholder="Session notes, observations..."
-                            />
-                            <div className="flex gap-2 mt-4">
-                                <button
-                                    onClick={async () => {
-                                        await updateBooking(noteModal.id, { adminNotes: noteText });
-                                        setNoteModal(null);
-                                    }}
-                                    className="flex-1 py-2 rounded-xl bg-gold-500 text-white text-sm font-medium hover:bg-gold-400 transition-colors"
-                                >
-                                    Save
-                                </button>
-                                <button
-                                    onClick={() => setNoteModal(null)}
-                                    className="px-4 py-2 rounded-xl bg-cream-100 text-cream-700 text-sm font-medium hover:bg-cream-200 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Meeting Link Modal */}
-                {linkModal && (
-                    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setLinkModal(null)}>
-                        <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                            <h3 className="text-lg font-serif text-gray-800 mb-3">🔗 Meeting Link</h3>
-                            <input
-                                type="url"
-                                value={linkText}
-                                onChange={(e) => setLinkText(e.target.value)}
-                                className="w-full p-3 rounded-xl bg-cream-50 border-2 border-cream-400/60 text-sm focus:outline-none focus:border-gold-500"
-                                placeholder="https://meet.google.com/..."
-                            />
-                            <div className="flex gap-2 mt-4">
-                                <button
-                                    onClick={async () => {
-                                        await updateBooking(linkModal.id, { meetingLink: linkText });
-                                        setLinkModal(null);
-                                    }}
-                                    className="flex-1 py-2 rounded-xl bg-gold-500 text-white text-sm font-medium hover:bg-gold-400 transition-colors"
-                                >
-                                    Save
-                                </button>
-                                <button
-                                    onClick={() => setLinkModal(null)}
-                                    className="px-4 py-2 rounded-xl bg-cream-100 text-cream-700 text-sm font-medium hover:bg-cream-200 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                {/* Modals */}
+                <NotesModal
+                    open={!!noteModal}
+                    bookingId={noteModal?.id || ""}
+                    currentNote={noteModal?.current || ""}
+                    onClose={() => setNoteModal(null)}
+                    onSave={(id, note) => updateBooking(id, { adminNotes: note })}
+                />
+                <MeetLinkModal
+                    open={!!linkModal}
+                    bookingId={linkModal?.id || ""}
+                    currentLink={linkModal?.current || ""}
+                    onClose={() => setLinkModal(null)}
+                    onSave={(id, link) => updateBooking(id, { meetingLink: link })}
+                />
+                <AnnouncementModal
+                    open={announceModal}
+                    onClose={() => setAnnounceModal(false)}
+                    showToast={showToast}
+                />
             </main>
-
-            {/* Announcement Modal */}
-            {announceModal && (
-                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setAnnounceModal(false)}>
-                    <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-lg font-serif text-gray-800 mb-3 flex items-center gap-2">
-                            <Megaphone className="w-5 h-5 text-gold-600" /> Bulk Announcement
-                        </h3>
-                        <p className="text-xs text-gray-500 mb-4">Send an email to all unique clients in the system.</p>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wider">Subject</label>
-                                <input
-                                    type="text"
-                                    value={announceSubject}
-                                    onChange={(e) => setAnnounceSubject(e.target.value)}
-                                    className="w-full p-3 rounded-xl bg-cream-50 border-2 border-cream-400/60 text-sm focus:outline-none focus:border-gold-500"
-                                    placeholder="e.g. Special Holiday Discount!"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-700 mb-1 uppercase tracking-wider">Message</label>
-                                <textarea
-                                    value={announceMessage}
-                                    onChange={(e) => setAnnounceMessage(e.target.value)}
-                                    rows={5}
-                                    className="w-full p-3 rounded-xl bg-cream-50 border-2 border-cream-400/60 text-sm focus:outline-none focus:border-gold-500 resize-none"
-                                    placeholder="Write your announcement here..."
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex gap-2 mt-6">
-                            <button
-                                onClick={async () => {
-                                    if (!announceSubject || !announceMessage) {
-                                        showToast("Please fill in subject and message.", "error");
-                                        return;
-                                    }
-                                    setActionLoading("announcement");
-                                    try {
-                                        const res = await fetch("/api/admin/announcements/send", {
-                                            method: "POST",
-                                            headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ subject: announceSubject, message: announceMessage }),
-                                        });
-                                        const data = await res.json();
-                                        showToast(data.message || data.error, res.ok ? "success" : "error");
-                                        if (res.ok) setAnnounceModal(false);
-                                    } catch {
-                                        showToast("Failed to send.", "error");
-                                    } finally {
-                                        setActionLoading(null);
-                                    }
-                                }}
-                                disabled={actionLoading === "announcement"}
-                                className="flex-1 py-3 rounded-xl bg-gold-600 text-white text-sm font-semibold hover:bg-gold-500 transition-all shadow-md disabled:opacity-50"
-                            >
-                                {actionLoading === "announcement" ? "Sending..." : "Send to All Clients"}
-                            </button>
-                            <button
-                                onClick={() => setAnnounceModal(false)}
-                                className="px-6 py-3 rounded-xl bg-cream-100 text-cream-700 text-sm font-semibold hover:bg-cream-200 transition-all"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Package Creation Modal */}
-            {packageModal && (
-                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setPackageModal(false)}>
-                    <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-lg font-serif text-gray-800 mb-3 flex items-center gap-2">
-                            <Box className="w-5 h-5 text-gold-600" /> Create Package
-                        </h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-700 mb-1">Name</label>
-                                <input type="text" value={pkgName} onChange={(e) => setPkgName(e.target.value)}
-                                    className="w-full p-3 rounded-xl bg-cream-50 border-2 border-cream-400/60 text-sm focus:outline-none focus:border-gold-500"
-                                    placeholder="e.g. Silver Package" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-700 mb-1">Description</label>
-                                <textarea value={pkgDesc} onChange={(e) => setPkgDesc(e.target.value)} rows={3}
-                                    className="w-full p-3 rounded-xl bg-cream-50 border-2 border-cream-400/60 text-sm focus:outline-none focus:border-gold-500 resize-none"
-                                    placeholder="Package description..." />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 mb-1">Sessions</label>
-                                    <input type="number" value={pkgSessions} onChange={(e) => setPkgSessions(e.target.value)}
-                                        className="w-full p-3 rounded-xl bg-cream-50 border-2 border-cream-400/60 text-sm focus:outline-none focus:border-gold-500"
-                                        placeholder="3" min="1" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 mb-1">Price (₹)</label>
-                                    <input type="number" value={pkgPrice} onChange={(e) => setPkgPrice(e.target.value)}
-                                        className="w-full p-3 rounded-xl bg-cream-50 border-2 border-cream-400/60 text-sm focus:outline-none focus:border-gold-500"
-                                        placeholder="5999" min="1" />
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex gap-2 mt-6">
-                            <button
-                                onClick={async () => {
-                                    if (!pkgName || !pkgSessions || !pkgPrice) {
-                                        showToast("Please fill all fields.", "error");
-                                        return;
-                                    }
-                                    setActionLoading("createPkg");
-                                    try {
-                                        const res = await fetch("/api/admin/packages", {
-                                            method: "POST",
-                                            headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({
-                                                name: pkgName,
-                                                description: pkgDesc,
-                                                sessionCount: pkgSessions,
-                                                price: pkgPrice,
-                                            }),
-                                        });
-                                        if (res.ok) {
-                                            await fetchPackages();
-                                            setPackageModal(false);
-                                            setPkgName(""); setPkgDesc(""); setPkgSessions(""); setPkgPrice("");
-                                            showToast("Package created!", "success");
-                                        } else {
-                                            const data = await res.json();
-                                            showToast(data.error || "Failed to create package", "error");
-                                        }
-                                    } catch {
-                                        showToast("Failed to create package", "error");
-                                    } finally {
-                                        setActionLoading(null);
-                                    }
-                                }}
-                                disabled={actionLoading === "createPkg"}
-                                className="flex-1 py-3 rounded-xl bg-gold-600 text-white text-sm font-semibold hover:bg-gold-500 transition-all shadow-md disabled:opacity-50"
-                            >
-                                {actionLoading === "createPkg" ? "Creating..." : "Create Package"}
-                            </button>
-                            <button
-                                onClick={() => setPackageModal(false)}
-                                className="px-6 py-3 rounded-xl bg-cream-100 text-cream-700 text-sm font-semibold hover:bg-cream-200 transition-all"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

@@ -21,6 +21,33 @@ const initialState: BookingFormData = {
     discountPercent: 0,
 };
 
+// ─── PII Minimization ──────────────────────────────────────────────────────
+// Only persist non-sensitive booking selections to localStorage.
+// Personal details (name, DOB, TOB, phone, email, birthPlace, concern) are
+// kept in React state only and NOT written to storage.
+const SAFE_KEYS: (keyof BookingFormData)[] = [
+    "consultationType",
+    "btrOption",
+    "duration",
+    "consultationDate",
+    "consultationTime",
+    "gender",
+    "promoCode",
+    "discountPercent",
+];
+
+// Auto-clear saved data older than this (2 hours)
+const STORAGE_TTL_MS = 2 * 60 * 60 * 1000;
+
+function getSafeFormData(formData: BookingFormData): Partial<BookingFormData> {
+    const safe: Partial<BookingFormData> = {};
+    for (const key of SAFE_KEYS) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (safe as any)[key] = formData[key];
+    }
+    return safe;
+}
+
 interface BookingContextType {
     formData: BookingFormData;
     updateFormData: (data: Partial<BookingFormData>) => void;
@@ -81,14 +108,41 @@ export function BookingProvider({ children }: { children: ReactNode }) {
 
         fetchPricingAndRates();
 
-        const savedFormData = localStorage.getItem("booking_formData");
-        const savedStep = localStorage.getItem("booking_currentStep");
-        const savedCurrency = localStorage.getItem("booking_currency");
+        // Check TTL before restoring saved data
+        const savedTimestamp = localStorage.getItem("booking_savedAt");
+        const isExpired = savedTimestamp && (Date.now() - parseInt(savedTimestamp)) > STORAGE_TTL_MS;
 
-        if (savedFormData) setFormData(JSON.parse(savedFormData));
-        if (savedStep) setCurrentStep(parseInt(savedStep));
-        // Only set saved currency if it's not "USD" or if we want to allow persistent currency
-        if (savedCurrency) setCurrency(savedCurrency);
+        if (isExpired) {
+            // Auto-clear expired data
+            localStorage.removeItem("booking_formData");
+            localStorage.removeItem("booking_currentStep");
+            localStorage.removeItem("booking_currency");
+            localStorage.removeItem("booking_savedAt");
+        } else {
+            // Restore only safe (non-PII) fields
+            const savedFormData = localStorage.getItem("booking_formData");
+            const savedStep = localStorage.getItem("booking_currentStep");
+            const savedCurrency = localStorage.getItem("booking_currency");
+
+            if (savedFormData) {
+                try {
+                    const parsed = JSON.parse(savedFormData);
+                    // Only restore safe keys — PII fields stay as initialState defaults
+                    const restored: Partial<BookingFormData> = {};
+                    for (const key of SAFE_KEYS) {
+                        if (parsed[key] !== undefined) {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            (restored as any)[key] = parsed[key];
+                        }
+                    }
+                    setFormData((prev) => ({ ...prev, ...restored }));
+                } catch {
+                    // Ignore corrupt localStorage
+                }
+            }
+            if (savedStep) setCurrentStep(parseInt(savedStep));
+            if (savedCurrency) setCurrency(savedCurrency);
+        }
 
         // Auto-detect timezone
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -97,10 +151,11 @@ export function BookingProvider({ children }: { children: ReactNode }) {
         setIsLoaded(true);
     }, []);
 
-    // Persist state to localStorage on changes
+    // Persist only safe (non-PII) state to localStorage on changes
     React.useEffect(() => {
         if (formData !== initialState) {
-            localStorage.setItem("booking_formData", JSON.stringify(formData));
+            localStorage.setItem("booking_formData", JSON.stringify(getSafeFormData(formData)));
+            localStorage.setItem("booking_savedAt", Date.now().toString());
         }
     }, [formData]);
 
@@ -123,14 +178,13 @@ export function BookingProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem("booking_formData");
         localStorage.removeItem("booking_currentStep");
         localStorage.removeItem("booking_currency");
+        localStorage.removeItem("booking_savedAt");
     };
 
     const convertPrice = (inrAmount: number, targetCurrency: string) => {
         if (targetCurrency === "INR") return inrAmount;
         const rate = rates[targetCurrency];
         if (!rate) {
-            // If it's USD and rate is missing (unlikely), use a safe fallback or return original
-            // but since INR is base, USD rate should be in the rates object (e.g. 0.012)
             return inrAmount;
         }
         return Math.round(inrAmount * rate);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendEmailConfirmation } from "@/lib/email";
+import { sendEmailConfirmation, sendAdminNotification } from "@/lib/email";
 import { createConsultationEvent, parseBookingDateTime } from "@/lib/google-calendar";
 
 const cashfreeAppId = process.env.CASHFREE_APP_ID;
@@ -130,6 +130,30 @@ export async function POST(request: NextRequest) {
             } else {
                 console.warn(`⚠️ Email failed for booking ${booking.id}:`, result.error);
             }
+        });
+
+        // Notify admin of new paid booking
+        sendAdminNotification({
+            bookingId: booking.id,
+            name: booking.name,
+            consultationType: booking.consultationType,
+            btrOption: booking.btrOption,
+            duration: booking.duration,
+            consultationDate: booking.consultationDate,
+            consultationTime: booking.consultationTime,
+            dob: booking.dob,
+            tob: booking.tob,
+            gender: booking.gender,
+            email: booking.email,
+            phone: booking.phone,
+            birthPlace: booking.birthPlace,
+            concern: booking.concern,
+            amount: booking.amount,
+            currency: booking.currency || "INR",
+            meetingLink: meetingLink || null,
+            userTimezone: booking.userTimezone || "Asia/Kolkata",
+        }).catch((err) => {
+            console.warn("Admin notification failed (non-fatal):", err);
         });
 
         return NextResponse.json({

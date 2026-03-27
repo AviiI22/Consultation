@@ -197,11 +197,9 @@ export async function POST(request: NextRequest) {
             paymentSessionId,
         });
     } catch (error) {
-        console.error("Booking creation error:", error);
-        console.error("Error details:", error instanceof Error ? error.message : String(error));
-        console.error("Error stack:", error instanceof Error ? error.stack : "no stack");
+        console.error("Booking creation error:", error instanceof Error ? error.message : String(error));
         return NextResponse.json(
-            { error: "Failed to create booking", details: error instanceof Error ? error.message : String(error) },
+            { error: "Failed to create booking. Please try again later." },
             { status: 500 }
         );
     }
