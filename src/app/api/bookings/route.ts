@@ -197,9 +197,12 @@ export async function POST(request: NextRequest) {
             paymentSessionId,
         });
     } catch (error) {
-        console.error("Booking creation error:", error instanceof Error ? error.message : String(error));
+        console.error("Booking creation error stack:", error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
         return NextResponse.json(
-            { error: "Failed to create booking. Please try again later." },
+            { 
+                error: `Booking Failed: ${errorMessage}` 
+            },
             { status: 500 }
         );
     }
